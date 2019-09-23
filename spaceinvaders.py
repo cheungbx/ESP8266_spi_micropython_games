@@ -1,7 +1,228 @@
-#!/usr/bin/env python
+
 
 # Space Invaders
-# Created by Lee Robinson
+#  ESP8266 (node MCU D1 mini)  micropython
+# by Billy Cheung  2019 08 31
+#
+# SPI OLED
+# GND
+# VCC
+# D0/Sck - D5 (=GPIO14=HSCLK)
+# D1/MOSI- D7 (=GPIO13=HMOSI)
+# RES    - D0 (=GPIO16)
+# DC     - D4 (=GPIO2)
+# CS     - D3 (=GPIO0)
+# Speaker
+# GPIO15   D8  Speaker
+# n.c.   - D6  (=GPIO13=HMOSI)
+#
+# GPIO5    D1——   On to read ADC for Btn
+# GPIO4    D2——   On to read ADC for Paddle
+#
+# buttons   A0
+# A0 VCC-9K-U-9K-L-12K-R-9K-D-9K-A-12K-B-9K-GND
+import gc
+import sys
+gc.collect()
+print (gc.mem_free())
+import network
+import utime
+from utime import sleep_ms,ticks_ms, ticks_us, ticks_diff
+from machine import Pin, SPI, PWM, ADC
+from math import sqrt
+import ssd1306
+from random import getrandbits, seed
+
+# configure oled display SPI SSD1306
+hspi = SPI(1, baudrate=8000000, polarity=0, phase=0)
+#DC, RES, CS
+display = ssd1306.SSD1306_SPI(128, 64, hspi, Pin(2), Pin(16), Pin(0))
+
+
+
+#---buttons
+
+btnU = const (1 << 1)
+btnL = const (1 << 2)
+btnR = const (1 << 3)
+btnD = const (1 << 4)
+btnA = const (1 << 5)
+btnB = const (1 << 6)
+
+Btns = 0
+lastBtns = 0
+
+pinBtn = Pin(5, Pin.OUT)
+pinPaddle = Pin(4, Pin.OUT)
+
+
+buzzer = Pin(15, Pin.OUT)
+
+adc = ADC(0)
+
+def getPaddle () :
+  pinPaddle.on()
+  pinBtn.off()
+  sleep_ms(20)
+  return adc.read()
+
+def pressed (btn, waitRelease=False) :
+  global Btns
+  if waitRelease and Btns :
+    pinPaddle.off()
+    pinBtn.on()
+    while ADC(0).read() > 70 :
+       sleep_ms (20)
+  return (Btns & btn)
+
+def lastpressed (btn) :
+  global lastBtns
+  return (lastBtns & btn)
+
+
+def getBtn () :
+  global Btns
+  global lastBtns
+  pinPaddle.off()
+  pinBtn.on()
+  lastBtns = Btns
+  Btns = 0
+  a0=ADC(0).read()
+  if a0  < 564 :
+    if a0 < 361 :
+      if a0 > 192 :
+        if a0 > 278 :
+          Btns |= btnU | btnA
+        else :
+          Btns |= btnL
+      else:
+        if a0 > 70 :
+          Btns |= btnU
+    else :
+      if a0 > 482 :
+        if a0 > 527 :
+          Btns |= btnD
+        else :
+          Btns |= btnU | btnB
+      else:
+        if a0 > 440 :
+          Btns |= btnL | btnA
+        else :
+          Btns |= btnR
+  else:
+      if a0 < 728 :
+        if a0 < 653 :
+          if a0 > 609 :
+            Btns |= btnD | btnA
+          else :
+            Btns |= btnR | btnA
+        elif a0 > 675 :
+          Btns |= btnA
+        else :
+          Btns |= btnL | btnB
+      elif a0 < 829 :
+        if a0 > 794 :
+          Btns |= btnD | btnB
+        else :
+          Btns |= btnR | btnB
+      elif a0 > 857 :
+        Btns |= btnB
+      else :
+        Btns |= btnA | btnB
+
+
+
+tones = {
+    'c4': 262,
+    'd4': 294,
+    'e4': 330,
+    'f4': 349,
+    'f#4': 370,
+    'g4': 392,
+    'g#4': 415,
+    'a4': 440,
+    "a#4": 466,
+    'b4': 494,
+    'c5': 523,
+    'c#5': 554,
+    'd5': 587,
+    'd#5': 622,
+    'e5': 659,
+    'f5': 698,
+    'f#5': 740,
+    'g5': 784,
+    'g#5': 831,
+    'a5': 880,
+    'b5': 988,
+    'c6': 1047,
+    'c#6': 1109,
+    'd6': 1175,
+    ' ': 0
+}
+
+
+def playTone(tone, tone_duration, total_duration):
+            beeper = PWM(buzzer, freq=tones[tone], duty=512)
+            utime.sleep_ms(tone_duration)
+            beeper.deinit()
+            utime.sleep_ms(int(total_duration * 1000)-tone_duration)
+
+def playSound(freq, tone_duration, total_duration):
+            beeper = PWM(buzzer, freq, duty=512)
+            utime.sleep_ms(tone_duration)
+            beeper.deinit()
+            utime.sleep_ms(int(total_duration * 1000)-tone_duration)
+
+SCREEN_WIDTH  = const(128)
+SCREEN_HEIGHT = const(64)
+frameRate = 30
+
+def block(self, x0, y0, x1, y1, data):
+    """Write a block of data to display.
+
+    Args:
+        x0 (int):  Starting X position.
+        y0 (int):  Starting Y position.
+        x1 (int):  Ending X position.
+        y1 (int):  Ending Y position.
+        data (bytes): Data buffer to write.
+    """
+    self.write_cmd(self.SET_COLUMN, x0, x1)
+    self.write_cmd(self.SET_ROW, y0, y1)
+    self.write_cmd(self.WRITE_RAM)
+    self.write_data(data)
+
+def load_sprite(self, path, w, h):
+        """Load sprite image.
+
+        Args:
+            path (string): Image file path.
+            w (int): Width of image.
+            h (int): Height of image.
+        Notes:
+            w x h cannot exceed 2048
+        """
+        buf_size = w * h * 2
+        with open(path, "rb") as f:
+            return f.read(buf_size)
+
+def draw_sprite(self, buf, x, y, w, h):
+    """Draw a sprite (optimized for horizontal drawing).
+
+    Args:
+        buf (bytearray): Buffer to draw.
+        x (int): Starting X position.
+        y (int): Starting Y position.
+        w (int): Width of drawing.
+        h (int): Height of drawing.
+    """
+
+    x2 = x + w - 1
+    y2 = y + h - 1
+    if self.is_off_grid(x, y, x2, y2):
+        return
+    self.block(x, y, x2, y2, buf)
+      
 
 '''
 from pygame import *
@@ -24,7 +245,6 @@ IMG_NAMES = ['ship', 'mystery',
 IMAGES = {name: image.load(IMAGE_PATH + '{}.png'.format(name)).convert_alpha()
           for name in IMG_NAMES}
 '''
-import gamehat
 
 BLOCKERS_POSITION = 48
 ENEMY_DEFAULT_POSITION =10  # Initial value for a new game
@@ -639,3 +859,12 @@ class SpaceInvaders(object):
 if __name__ == '__main__':
     game = SpaceInvaders()
     game.main()
+
+
+
+
+display.show()
+# Attempt to set framerate to 30 FPS
+timer_dif = int(1000/frameRate) - ticks_diff(ticks_ms(), timer)
+if timer_dif > 0 :
+  sleep_ms(timer_dif)
