@@ -61,7 +61,7 @@ adc = ADC(0)
 def getPaddle () :
   pinPaddle.on()
   pinBtn.off()
-  sleep_ms(20)
+  sleep_ms(1)
   return adc.read()
 
 def pressed (btn, waitRelease=False) :
@@ -184,171 +184,197 @@ dx = 5
 vc = 3
 gunW= const(7)
 gunH = const (5)
-invaderSize = const(5)
-invaders_rows = const(4)
+invaderSize = const(4)
+invaders_rows = const(5)
 invaders_per_row = const(11)
 
 
-gameOver = False
+
 
 class Rect (object):
     def __init__(self, x, y, w, h):
         self.x = x
         self.y = y
-        self.w = w
-        self.h = h
-        self.x2 = x + w -1
+        self.x2 = x + w - 1
         self.y2 = y + h - 1 
     def move_ip (self, vx, vy) :
         self.x = self.x + vx
         self.y = self.y + vy
+        self.x2 = self.x2 + vx
+        self.y2 = self.y2 + vy 
+         
     def colliderect (self, rect1) :
       if (self.x2 >= rect1.x and
-         self.x <= rect1.x2 and
-         self.y2 >= rect1.y and
-         self.y <= rect1.y2) :
+        self.x <= rect1.x2 and
+        self.y2 >= rect1.y and
+        self.y <= rect1.y2) :
         return True
-      else :
+      else:
         return False
-          
         
   
 def setUpInvaders ():
-    invaderList = []
+    invaders = []
     y = yMargin
     while y < yMargin + (invaderSize+2) * invaders_rows :
       x = xMargin
       while x < xMargin + (invaderSize+2) * invaders_per_row :
-        invaderList.append(Rect(x,y,invaderSize, invaderSize))
-        # print (str(x) + ":" + str(y))
+        invaders.append(Rect(x,y,invaderSize, invaderSize))
         x = x + invaderSize + 2
-      y = y + invaderSize + 2  
-    return invaderList
+      y = y + invaderSize + 2       
+    return invaders
   
 def drawInvaders (invaderList, postureA) :
   if postureA :
-    for i in invaderList :
-        display.fill_rect(i.x, i.y, i.w, i.h, 1)
-        display.fill_rect(i.x+2, i.y+2, i.w-4, i.h-2, 0)
+    for i in invaders :
+        display.fill_rect(i.x, i.y, invaderSize , invaderSize, 1)
+        display.fill_rect(i.x+1, i.y+2, invaderSize-2, invaderSize-2, 0)
   else :
-      for i in invaderList :
-        display.fill_rect(i.x, i.y, i.w, i.h, 1)
-        display.fill_rect(i.x+2, i.y, i.w-4, i.h-2, 0)
+      for i in invaders :
+        display.fill_rect(i.x, i.y, invaderSize , invaderSize, 1)
+        display.fill_rect(i.x+1, i.y, invaderSize-2, invaderSize-2, 0)
 def drawGun () :
   display.fill_rect(gun.x, gun.y+3, gunW, 3,1)
   display.fill_rect(gun.x+3, gun.y, 1, 3,1)
 def drawBullets () :
   for b in bullets:
     display.fill_rect(b.x, b.y, 1,3,1)
+    
+def drawScore () :
+  display.text('S:{}'.format (score), 0,0,1)
+  for i in range (0, life) :
+    display.fill_rect(90 + (gunW+2)*i, 3, gunW, 3,1)  
+    display.fill_rect(93 + (gunW+2)*i, 0, 1, 3,1)
 
+    
 
-
-frameCount = 0
-postureA = False
-usePaddle = False
-demo = False
-
-display.fill(0)
-display.text('Invaders', 5, 0, 1)
-display.text('A = Button', 5, 20, 1)
-display.text('B = Paddle', 5,30,  1)
-display.text('D = Demo', 5, 40,  1)
-display.text('L = Exit', 5, 50,  1)
-display.show()
-
-#menu screen
 while True:
-  getBtn()
-  if pressed(btnL,True) :
-    gameOver = True
-    exitGame = True
-    break
-  elif pressed(btnA,True) :
-    usePaddle = False
-    break
-  elif pressed(btnB,True) :
-    usePaddle = True
-    break
-  elif pressed(btnD,True) :
-    demo = True
-    usePddle = False
-    wait_for_keys=False
-    display.fill(0)
-    display.text('DEMO', 5, 0, 1)
-    display.text('A or B to Stop', 5, 30, 1)
-    display.show()
-    sleep_ms(2000)  
-    break
-    
-#reset the game 
-
-bullets = []
-invaderList = setUpInvaders()
-gun = Rect(screenL+int((screenR-screenL)/2), screenB, gunW, gunH)
-
-while not gameOver:
-  timer = ticks_ms()
+  gameOver = False
+  usePaddle = False
+  demo = False
+  life = 3
   display.fill(0)
-  display.text ("Score:", 0,0, 1)
-  frameCount += 1
-  if frameCount > 15 :
-      
-    for i in invaderList:
-        if i.x > screenR or i.x < screenL :
-            dx = -dx
-            for alien in invaderList :
-              alien.move_ip (0, invaderSize + 2)
-              if alien.y > screenB :
-                gameOver = True
-            break
-    for i in invaderList :
-        i.move_ip (dx, 0)
-    frameCount = 0
-    postureA = not postureA
-    
-     
-  # move gun
-  getBtn()
-  if Btns & btnA and len(bullets) < 2:
-    bullets.append(Rect(gun.x+3, gun.y-1, 1, 3))
-  if usePaddle :
-    gun.x = int(getPaddle() / (1024/(screenR-screenL)))
-  else :
-    if Btns & btnL and gun.x - 3 > 0 :
-      vc = -3
-    elif Btns & btnR and (gun.x + 3 + gunW ) < screenW :
-      vc = 3
-    else :
-      vc = 0
-    gun.move_ip (vc, 0)
-      
+  display.text('Invaders', 5, 0, 1)
+  display.text('A = Button', 5, 20, 1)
+  display.text('B = Paddle', 5,30,  1)
+  display.text('D = Demo', 5, 40,  1)
+  display.text('L = Exit', 5, 50,  1)
+  display.show()
 
-  
-  # move bullets
-  
-  for b in bullets:
-    b.move_ip(0,-3)
-    if b.y < 0 : 
-      bullets.remove(b)
-      for i in invaderList:
-        if i.colliderect(b) :
-          invaderList.remove(i)
-          bullets.remove(b)
-  
-  drawInvaders (invaderList, postureA)
-  drawGun()
-  drawBullets()
-  
-  timer_dif = int(1000/frameRate) - ticks_diff(ticks_ms(), timer)
-
-  if timer_dif > 0 :
-      sleep_ms(timer_dif)  
+  #menu screen
+  while True:
+    getBtn()
+    if pressed(btnL,True) :
+      gameOver = True
+      exitGame = True
+      break
+    elif pressed(btnA,True) :
+      usePaddle = False
+      break
+    elif pressed(btnB,True) :
+      usePaddle = True
+      break
+    elif pressed(btnD,True) :
+      demo = True
+      usePddle = False
+      wait_for_keys=False
+      display.fill(0)
+      display.text('DEMO', 5, 0, 1)
+      display.text('A or B to Stop', 5, 30, 1)
       display.show()
+      sleep_ms(2000)  
+      break
+      
+  #reset the game 
+  score = 0
+  frameCount = 0
+  resetAliens = True
+  postureA = False
+  
+  while not gameOver:
+    if resetAliens :
+      resetAliens = False
+      bullets = []
+      aBullets = []
+      invaders = setUpInvaders()
+      gun = Rect(screenL+int((screenR-screenL)/2), screenB, gunW, gunH)
+  
+
+    timer = ticks_ms()
+    display.fill(0)
+    frameCount += 1
+    if frameCount > 15 :
+      frameCount = 0
+      postureA = not postureA
+      
+      for i in invaders:
+          if i.x > screenR or i.x < screenL :
+              dx = -dx
+              for alien in invaders :
+                alien.move_ip (0, invaderSize)
+                if alien.y > screenB :
+                  resetAliens = True
+                  life -= 1
+                  if life < 0 :
+                    gameOver = True
+                  break
+              break
+      for i in invaders :
+          i.move_ip (dx, 0)
+
+      
+       
+    # move gun
+    getBtn()
+    if Btns & btnA and len(bullets) < 1:
+      bullets.append(Rect(gun.x+3, gun.y-1, 1, 3))
+    if usePaddle :
+      gun.x = int(getPaddle() / (1024/(screenR-screenL)))
+    else :
+      if Btns & btnL and gun.x - 3 > 0 :
+        vc = -3
+      elif Btns & btnR and (gun.x + 3 + gunW ) < screenW :
+        vc = 3
+      else :
+        vc = 0
+      gun.move_ip (vc, 0)
+        
+
+    
+    # move bullets
+    
+    for b in bullets:
+      b.move_ip(0,-3)
+      if b.y < 0 : 
+        bullets.remove(b)
+      else :
+        for i in invaders:
+          if i.colliderect(b) :
+            invaders.remove(i)
+            bullets.remove(b)
+            score +=1
+            break
+    
+    drawInvaders (invaders, postureA)
+    drawGun()
+    drawBullets()
+    drawScore()
+    
+    if gameOver :
+      display.text ("GAME OVER", 5, 20, 1)
+      display.show()
+      sleep_ms(2000)
+ 
+    display.show()
+    
+    timer_dif = int(1000/frameRate) - ticks_diff(ticks_ms(), timer)
+
+    if timer_dif > 0 :
+        sleep_ms(timer_dif)  
+
 
 
  
-
-
 
 
 
