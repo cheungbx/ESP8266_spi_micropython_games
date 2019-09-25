@@ -239,15 +239,20 @@ def drawGun () :
 def drawBullets () :
   for b in bullets:
     display.fill_rect(b.x, b.y, 1,3,1)
+
+def drawAbullets () :
+  for b in aBullets:
+    display.fill_rect(b.x, b.y, 1,3,1)
     
 def drawScore () :
   display.text('S:{}'.format (score), 0,0,1)
+  display.text('L:{}'.format (level), 66,0,1)
   for i in range (0, life) :
     display.fill_rect(90 + (gunW+2)*i, 3, gunW, 3,1)  
     display.fill_rect(93 + (gunW+2)*i, 0, 1, 3,1)
 
     
-
+seed(ticks_us())
 while True:
   gameOver = False
   usePaddle = False
@@ -288,19 +293,25 @@ while True:
   #reset the game 
   score = 0
   frameCount = 0
-  resetAliens = True
+  level = 0
+  loadLevel = True
   postureA = False
+  # Chance from 1 to 128
+  aBulletChance = 1 
   
   while not gameOver:
-    if resetAliens :
-      resetAliens = False
+  
+    timer = ticks_ms()
+    lost = False
+    
+    if loadLevel :
+      loadLevel = False
       bullets = []
       aBullets = []
       invaders = setUpInvaders()
       gun = Rect(screenL+int((screenR-screenL)/2), screenB, gunW, gunH)
-  
+      aBulletChance = 1 + level 
 
-    timer = ticks_ms()
     display.fill(0)
     frameCount += 1
     if frameCount > 15 :
@@ -313,10 +324,8 @@ while True:
               for alien in invaders :
                 alien.move_ip (0, invaderSize)
                 if alien.y > screenB :
-                  resetAliens = True
-                  life -= 1
-                  if life < 0 :
-                    gameOver = True
+                  lost = True
+                  loadLevel = True
                   break
               break
       for i in invaders :
@@ -324,10 +333,12 @@ while True:
 
       
        
-    # move gun
+  
     getBtn()
-    if Btns & btnA and len(bullets) < 1:
+    # Fire
+    if Btns & btnA and len(bullets) < 2:
       bullets.append(Rect(gun.x+3, gun.y-1, 1, 3))
+    # move gun
     if usePaddle :
       gun.x = int(getPaddle() / (1024/(screenR-screenL)))
     else :
@@ -338,8 +349,6 @@ while True:
       else :
         vc = 0
       gun.move_ip (vc, 0)
-        
-
     
     # move bullets
     
@@ -354,12 +363,41 @@ while True:
             bullets.remove(b)
             score +=1
             break
-    
+          
+    # Launch Alien bullets      
+    for i in invaders:
+      if getrandbits(10) < aBulletChance and len(aBullets) <= 6 :
+        aBullets.append(Rect(i.x+2, i.y, 1, 3))     
+
+    # move Alien bullets
+    for b in aBullets:
+      b.move_ip(0,3)
+      if b.y >= screenH : 
+        aBullets.remove(b)
+      else :
+          if b.colliderect(gun) :
+            lost = True
+            aBullets.remove(b)
+            score +=1
+            break
+
     drawInvaders (invaders, postureA)
     drawGun()
     drawBullets()
+    drawAbullets()
     drawScore()
-    
+
+
+    if len(invaders) == 0 :
+      level += 1
+      loadLevel = True
+      
+    if lost :
+      lost = False;
+      life -= 1
+      if life < 0 :
+        gameOver = True
+        
     if gameOver :
       display.text ("GAME OVER", 5, 20, 1)
       display.show()
@@ -375,6 +413,7 @@ while True:
 
 
  
+
 
 
 
