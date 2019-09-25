@@ -159,18 +159,20 @@ tones = {
 }
 
 
-def playTone(tone, tone_duration, total_duration):
-            beeper = PWM(buzzer, freq=tones[tone], duty=512)
-            utime.sleep_ms(tone_duration)
-            beeper.deinit()
-            utime.sleep_ms(int(total_duration * 1000)-tone_duration)
+def playTone(tone, tone_duration, rest_duration=0):
+  beeper = PWM(buzzer, freq=tones[tone], duty=512)
+  utime.sleep_ms(tone_duration)
+  beeper.deinit()
+  utime.sleep_ms(rest_duration)
 
-def playSound(freq, tone_duration, total_duration):
-            beeper = PWM(buzzer, freq, duty=512)
-            utime.sleep_ms(tone_duration)
-            beeper.deinit()
-            utime.sleep_ms(int(total_duration * 1000)-tone_duration)
-            
+def playSound(freq, tone_duration, rest_duration=0):
+  beeper = PWM(buzzer, freq, duty=512)
+  utime.sleep_ms(tone_duration)
+  beeper.deinit()
+  utime.sleep_ms(rest_duration)
+       
+
+
 frameRate = 30
 screenW = const(128)
 screenH = const(64)
@@ -190,19 +192,18 @@ invaders_per_row = const(11)
 
 
 
-
 class Rect (object):
     def __init__(self, x, y, w, h):
         self.x = x
         self.y = y
         self.x2 = x + w - 1
-        self.y2 = y + h - 1 
+        self.y2 = y + h - 1
     def move_ip (self, vx, vy) :
         self.x = self.x + vx
         self.y = self.y + vy
         self.x2 = self.x2 + vx
-        self.y2 = self.y2 + vy 
-         
+        self.y2 = self.y2 + vy
+
     def colliderect (self, rect1) :
       if (self.x2 >= rect1.x and
         self.x <= rect1.x2 and
@@ -211,21 +212,31 @@ class Rect (object):
         return True
       else:
         return False
-        
-  
+
+
 def setUpInvaders ():
-    invaders = []
     y = yMargin
     while y < yMargin + (invaderSize+2) * invaders_rows :
       x = xMargin
       while x < xMargin + (invaderSize+2) * invaders_per_row :
         invaders.append(Rect(x,y,invaderSize, invaderSize))
         x = x + invaderSize + 2
-      y = y + invaderSize + 2       
-    return invaders
-  
-def drawInvaders (invaderList, postureA) :
-  if postureA :
+      y = y + invaderSize + 2
+
+def drawSpaceships (posture) :
+  if posture :
+    for i in spaceships :
+      display.fill_rect(i.x+2, i.y, 5 , 3, 1)
+      display.fill_rect(i.x, i.y+1, 9, 1, 1)
+      display.fill_rect(i.x+1, i.y+1, 2, 1, 0)
+  else :
+    for i in spaceships :
+      display.fill_rect(i.x+2, i.y, 5 , 3, 1)
+      display.fill_rect(i.x, i.y+1, 9, 1, 1)
+      display.fill_rect(i.x+5, i.y+1, 2, 1, 0)
+
+def drawInvaders (posture) :
+  if posture :
     for i in invaders :
         display.fill_rect(i.x, i.y, invaderSize , invaderSize, 1)
         display.fill_rect(i.x+1, i.y+2, invaderSize-2, invaderSize-2, 0)
@@ -243,15 +254,15 @@ def drawBullets () :
 def drawAbullets () :
   for b in aBullets:
     display.fill_rect(b.x, b.y, 1,3,1)
-    
+
 def drawScore () :
   display.text('S:{}'.format (score), 0,0,1)
-  display.text('L:{}'.format (level), 66,0,1)
+  display.text('L:{}'.format (level), 50,0,1)
   for i in range (0, life) :
-    display.fill_rect(90 + (gunW+2)*i, 3, gunW, 3,1)  
+    display.fill_rect(90 + (gunW+2)*i, 3, gunW, 3,1)
     display.fill_rect(93 + (gunW+2)*i, 0, 1, 3,1)
 
-    
+
 seed(ticks_us())
 while True:
   gameOver = False
@@ -287,57 +298,86 @@ while True:
       display.text('DEMO', 5, 0, 1)
       display.text('A or B to Stop', 5, 30, 1)
       display.show()
-      sleep_ms(2000)  
+      sleep_ms(2000)
       break
-      
-  #reset the game 
+
+  #reset the game
   score = 0
   frameCount = 0
   level = 0
   loadLevel = True
   postureA = False
+  postureS = False
   # Chance from 1 to 128
-  aBulletChance = 1 
-  
+  aBulletChance = 1
+  spaceshipChance = 1
+
   while not gameOver:
-  
+
     timer = ticks_ms()
     lost = False
-    
+    frameCount = (frameCount + 1 ) % 120
+    display.fill(0)
+      
     if loadLevel :
       loadLevel = False
+      spaceships = []
+      invaders = []
       bullets = []
       aBullets = []
-      invaders = setUpInvaders()
+      setUpInvaders()
       gun = Rect(screenL+int((screenR-screenL)/2), screenB, gunW, gunH)
-      aBulletChance = 1 + level 
+      aBulletChance = 1 + level
 
-    display.fill(0)
-    frameCount += 1
-    if frameCount > 15 :
-      frameCount = 0
+
+
+    #generate space ships
+    if getrandbits(8) < spaceshipChance and len(spaceships) < 1 :
+      spaceships.append(Rect(0,3, 9, 3))
+
+    if len(spaceships) :
+      if not frameCount % 3 :
+        postureS = not postureS
+        # move spaceships once every 4 frames
+        for i in spaceships:
+          i.move_ip(2,0)
+          if i.x >= screenR :
+            spaceships.remove(i)
+      if frameCount % 20 == 10 :
+        playTone ('e5', 10)
+      elif frameCount % 20 == 0 :
+        playTone ('c5', 10)
+        
+
+    if not frameCount % 15 :
       postureA = not postureA
-      
+      # move Aliens once every 15 frames
+      if postureA :
+          playSound (80, 10)        
+      else:
+          playSound (120, 10)        
       for i in invaders:
-          if i.x > screenR or i.x < screenL :
-              dx = -dx
-              for alien in invaders :
-                alien.move_ip (0, invaderSize)
-                if alien.y > screenB :
-                  lost = True
-                  loadLevel = True
-                  break
-              break
-      for i in invaders :
-          i.move_ip (dx, 0)
+        if i.x > screenR or i.x < screenL :
+            dx = -dx
+            for alien in invaders :
+              alien.move_ip (0, invaderSize)
+              if alien.y2 > gun.y :
+                lost = True
+                loadLevel = True
+                break
+            break
 
-      
-       
-  
+      for i in invaders :
+        i.move_ip (dx, 0)
+
+
     getBtn()
     # Fire
     if Btns & btnA and len(bullets) < 2:
       bullets.append(Rect(gun.x+3, gun.y-1, 1, 3))
+      playSound (200,5)
+      playSound (300,5)
+      playSound (400,5)
     # move gun
     if usePaddle :
       gun.x = int(getPaddle() / (1024/(screenR-screenL)))
@@ -349,12 +389,12 @@ while True:
       else :
         vc = 0
       gun.move_ip (vc, 0)
-    
+
     # move bullets
-    
+
     for b in bullets:
       b.move_ip(0,-3)
-      if b.y < 0 : 
+      if b.y < 0 :
         bullets.remove(b)
       else :
         for i in invaders:
@@ -362,26 +402,39 @@ while True:
             invaders.remove(i)
             bullets.remove(b)
             score +=1
+            playTone ('c6',10)
             break
-          
-    # Launch Alien bullets      
+        for i in spaceships :
+          if i.colliderect(b) :
+            spaceships.remove(i)
+            bullets.remove(b)
+            score +=10
+            playTone ('b5',10)
+            playTone ('e5',10)
+            playTone ('c5',10)
+            break
+
+    # Launch Alien bullets
     for i in invaders:
       if getrandbits(10) < aBulletChance and len(aBullets) <= 6 :
-        aBullets.append(Rect(i.x+2, i.y, 1, 3))     
+        aBullets.append(Rect(i.x+2, i.y, 1, 3))
 
     # move Alien bullets
     for b in aBullets:
       b.move_ip(0,3)
-      if b.y >= screenH : 
+      if b.y >= screenH :
         aBullets.remove(b)
       else :
           if b.colliderect(gun) :
             lost = True
             aBullets.remove(b)
-            score +=1
+            playTone ('c4',30)
+            playTone ('e4',10)
+            playTone ('b4',30)
             break
 
-    drawInvaders (invaders, postureA)
+    drawSpaceships (postureS)
+    drawInvaders (postureA)
     drawGun()
     drawBullets()
     drawAbullets()
@@ -391,30 +444,26 @@ while True:
     if len(invaders) == 0 :
       level += 1
       loadLevel = True
-      
+
     if lost :
       lost = False;
       life -= 1
       if life < 0 :
         gameOver = True
-        
+
     if gameOver :
       display.text ("GAME OVER", 5, 20, 1)
+      playTone ('b4',300)
+      playTone ('e4',100)
+      playTone ('c4',100)
       display.show()
+      
       sleep_ms(2000)
- 
+
     display.show()
-    
+
     timer_dif = int(1000/frameRate) - ticks_diff(ticks_ms(), timer)
 
     if timer_dif > 0 :
-        sleep_ms(timer_dif)  
-
-
-
- 
-
-
-
-
+        sleep_ms(timer_dif)
 
