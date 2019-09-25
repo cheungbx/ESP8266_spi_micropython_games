@@ -333,7 +333,7 @@ while True:
 
     #generate space ships
     if getrandbits(8) < spaceshipChance and len(spaceships) < 1 :
-      spaceships.append(Rect(0,3, 9, 3))
+      spaceships.append(Rect(0,9, 9, 9))
 
     if len(spaceships) :
       if not frameCount % 3 :
