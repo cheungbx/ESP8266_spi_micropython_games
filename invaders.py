@@ -416,7 +416,7 @@ while True:
 
     # Launch Alien bullets
     for i in invaders:
-      if getrandbits(10) < aBulletChance and len(aBullets) <= 6 :
+      if getrandbits(9) < aBulletChance and len(aBullets) < 4 :
         aBullets.append(Rect(i.x+2, i.y, 1, 3))
 
     # move Alien bullets
