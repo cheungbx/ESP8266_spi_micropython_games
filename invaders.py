@@ -20,6 +20,7 @@
 #
 # buttons   A0
 # A0 VCC-9K-U-9K-L-12K-R-9K-D-9K-A-12K-B-9K-GND
+#
 import gc
 import sys
 gc.collect()
@@ -184,7 +185,7 @@ screenT = const (10)
 screenB = const (58)
 dx = 5
 vc = 3
-gunW= const(7)
+gunW= const(5)
 gunH = const (5)
 invaderSize = const(4)
 invaders_rows = const(5)
@@ -245,8 +246,9 @@ def drawInvaders (posture) :
         display.fill_rect(i.x, i.y, invaderSize , invaderSize, 1)
         display.fill_rect(i.x+1, i.y, invaderSize-2, invaderSize-2, 0)
 def drawGun () :
-  display.fill_rect(gun.x, gun.y+3, gunW, 3,1)
-  display.fill_rect(gun.x+3, gun.y, 1, 3,1)
+  display.fill_rect(gun.x+2, gun.y, 1, 2,1)
+  display.fill_rect(gun.x, gun.y+2, gunW, 3,1)
+
 def drawBullets () :
   for b in bullets:
     display.fill_rect(b.x, b.y, 1,3,1)
@@ -259,8 +261,9 @@ def drawScore () :
   display.text('S:{}'.format (score), 0,0,1)
   display.text('L:{}'.format (level), 50,0,1)
   for i in range (0, life) :
-    display.fill_rect(90 + (gunW+2)*i, 3, gunW, 3,1)
-    display.fill_rect(93 + (gunW+2)*i, 0, 1, 3,1)
+    display.fill_rect(92 + (gunW+2)*i, 0, 1, 2,1)
+    display.fill_rect(90 + (gunW+2)*i, 2, gunW, 3,1)
+
 
 
 seed(ticks_us())
@@ -344,9 +347,9 @@ while True:
           if i.x >= screenR :
             spaceships.remove(i)
       if frameCount % 20 == 10 :
-        playTone ('e5', 10)
+        playTone ('e5', 50)
       elif frameCount % 20 == 0 :
-        playTone ('c5', 10)
+        playTone ('c5', 50)
         
 
     if not frameCount % 15 :
@@ -381,6 +384,7 @@ while True:
     # move gun
     if usePaddle :
       gun.x = int(getPaddle() / (1024/(screenR-screenL)))
+      gun.x2 = gun.x+gunW-1
     else :
       if Btns & btnL and gun.x - 3 > 0 :
         vc = -3
@@ -393,7 +397,7 @@ while True:
     # move bullets
 
     for b in bullets:
-      b.move_ip(0,-3)
+      b.move_ip(0,-2)
       if b.y < 0 :
         bullets.remove(b)
       else :
@@ -409,29 +413,29 @@ while True:
             spaceships.remove(i)
             bullets.remove(b)
             score +=10
-            playTone ('b5',10)
+            playTone ('b4',30)
             playTone ('e5',10)
-            playTone ('c5',10)
+            playTone ('c4',30)
             break
 
     # Launch Alien bullets
     for i in invaders:
-      if getrandbits(9) < aBulletChance and len(aBullets) < 4 :
+      if getrandbits(9) < aBulletChance and len(aBullets) < 3 :
         aBullets.append(Rect(i.x+2, i.y, 1, 3))
 
     # move Alien bullets
     for b in aBullets:
-      b.move_ip(0,3)
-      if b.y >= screenH :
+      b.move_ip(0,2)
+      if b.y > screenH  :
         aBullets.remove(b)
-      else :
-          if b.colliderect(gun) :
-            lost = True
-            aBullets.remove(b)
-            playTone ('c4',30)
-            playTone ('e4',10)
-            playTone ('b4',30)
-            break
+      elif b.colliderect(gun) :
+        lost = True
+        #print ('{} {} {} {} : {} {} {} {}'.format(b.x,b.y,b.x2,b.y2,gun.x,gun.y,gun.x2,gun.y2))
+        aBullets.remove(b)
+        playTone ('c5',30)
+        playTone ('e4',30)
+        playTone ('b4',30)
+        break
 
     drawSpaceships (postureS)
     drawInvaders (postureA)
@@ -444,6 +448,11 @@ while True:
     if len(invaders) == 0 :
       level += 1
       loadLevel = True
+      playTone ('c4',100)
+      playTone ('d4',100)
+      playTone ('e4',100)
+      playTone ('f4',100)
+      playTone ('g4',100)
 
     if lost :
       lost = False;
@@ -452,6 +461,7 @@ while True:
         gameOver = True
 
     if gameOver :
+      display.fill_rect (3, 15, 120,20,0)
       display.text ("GAME OVER", 5, 20, 1)
       playTone ('b4',300)
       playTone ('e4',100)
@@ -466,4 +476,5 @@ while True:
 
     if timer_dif > 0 :
         sleep_ms(timer_dif)
+
 
