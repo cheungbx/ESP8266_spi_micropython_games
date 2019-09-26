@@ -157,11 +157,17 @@ tones = {
 }
 
 
-def playTone(tone, tone_duration, total_duration):
-            beeper = PWM(buzzer, freq=tones[tone], duty=512)
-            utime.sleep_ms(tone_duration)
-            beeper.deinit()
-            utime.sleep_ms(int(total_duration * 1000)-tone_duration)
+def playTone(tone, tone_duration, rest_duration=0):
+  beeper = PWM(buzzer, freq=tones[tone], duty=512)
+  utime.sleep_ms(tone_duration)
+  beeper.deinit()
+  utime.sleep_ms(rest_duration)
+
+def playSound(freq, tone_duration, rest_duration=0):
+  beeper = PWM(buzzer, freq, duty=512)
+  utime.sleep_ms(tone_duration)
+  beeper.deinit()
+  utime.sleep_ms(rest_duration)
             
 while not (pressed(btnL) and pressed(btnA)):
   display.fill(0)
@@ -169,33 +175,33 @@ while not (pressed(btnL) and pressed(btnA)):
   getBtn() 
   if pressed (btnU):
      display.text("U",20, 20,1) 
-     playTone('c4', 100,0.1)
+     playTone('c4', 100)
   else :
      display.text(":",20, 20,1)  
   if pressed(btnL):
      display.text("L",0, 35,1) 
-     playTone('d4', 100,0.1)
+     playTone('d4', 100)
   else :
      display.text(":",0, 35,1)     
   if pressed(btnR):
      display.text("R",40, 35,1) 
-     playTone('e4', 100,0.1)
+     playTone('e4', 100)
   else :
      display.text(":",40, 35,1)     
 
   if pressed(btnD):
      display.text("D",20, 50,1) 
-     playTone('f4', 100,0.1)
+     playTone('f4', 100)
   else :
      display.text(":",20, 50,1)   
   if pressed(btnA):
      display.text("A",80, 40,1) 
-     playTone('c5', 100,0.1)
+     playTone('c5', 100)
   else :
      display.text(":",80, 40,1)  
   if pressed(btnB):
      display.text("B",100, 40,1) 
-     playTone('d5', 100,0.1)
+     playTone('d5', 100)
   else :
      display.text(":",100, 40,1)  
  
@@ -207,6 +213,7 @@ while not (pressed(btnL) and pressed(btnA)):
 
 # wait till keys are released
 pressed(btnL,True)
+
 
 
 

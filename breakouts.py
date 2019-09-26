@@ -160,17 +160,17 @@ tones = {
 }
 
 
-def playTone(tone, tone_duration, total_duration):
-            beeper = PWM(buzzer, freq=tones[tone], duty=512)
-            utime.sleep_ms(tone_duration)
-            beeper.deinit()
-            utime.sleep_ms(int(total_duration * 1000)-tone_duration)
+def playTone(tone, tone_duration, rest_duration=0):
+  beeper = PWM(buzzer, freq=tones[tone], duty=512)
+  utime.sleep_ms(tone_duration)
+  beeper.deinit()
+  utime.sleep_ms(rest_duration)
 
-def playSound(freq, tone_duration, total_duration):
-            beeper = PWM(buzzer, freq, duty=512)
-            utime.sleep_ms(tone_duration)
-            beeper.deinit()
-            utime.sleep_ms(int(total_duration * 1000)-tone_duration)
+def playSound(freq, tone_duration, rest_duration=0):
+  beeper = PWM(buzzer, freq, duty=512)
+  utime.sleep_ms(tone_duration)
+  beeper.deinit()
+  utime.sleep_ms(rest_duration)
 
 SCREEN_WIDTH  = const(128)
 SCREEN_HEIGHT = const(64)
@@ -590,7 +590,7 @@ while not exitGame :
               for ball in balls:
                   # move ball and check if bounced off walls and paddle
                   if ball.set_position(paddle.x, paddle.y,paddle.x2, paddle.center):
-                      playSound(2000, 10, 0.001)
+                      playSound(2000, 10)
                   # Check for collision with bricks if not frozen
                   if not ball.frozen:
                       prior_collision = False
@@ -618,7 +618,7 @@ while not exitGame :
                                       ball.y_speed,
                                       ball_center_x,
                                       ball_center_y)
-                                  playTone('c6', 10, 0.001)
+                                  playTone('c6', 10)
                                   prior_collision = True
                               score_points += 1
                               brick.clear()
@@ -632,9 +632,9 @@ while not exitGame :
                           # Lose life if last ball on screen
                           if len(lives) == 0:
                               score.game_over()
-                              playTone('g4', 500, 1)
-                              playTone('c5', 500, 0.5)
-                              playTone('f4', 500, 1)
+                              playTone('g4', 1000)
+                              playTone('c5', 500)
+                              playTone('f4', 1000)
                               gameover = True
                           else:
                               # Subtract Life
@@ -660,14 +660,14 @@ while not exitGame :
                       level = 1
                   bricks = load_level(level, display)
                   balls.append(Ball(59, 58, -2, -1, display, frozen=True))
-                  playTone('c5', 20, 0.02)
-                  playTone('d5', 20, 0.02)
-                  playTone('e5', 20, 0.02)
-                  playTone('f5', 20, 0.02)
-                  playTone('g5', 20, 0.02)
-                  playTone('a5', 20, 0.02)
-                  playTone('b5', 20, 0.02)
-                  playTone('c6', 20, 0.02)
+                  playTone('c5', 20)
+                  playTone('d5', 20)
+                  playTone('e5', 20)
+                  playTone('f5', 20)
+                  playTone('g5', 20)
+                  playTone('a5', 20)
+                  playTone('b5', 20)
+                  playTone('c6', 20)
               display.show()
               # Attempt to set framerate to 30 FPS
               timer_dif = int(1000/frameRate) - ticks_diff(ticks_ms(), timer)
@@ -677,6 +677,7 @@ while not exitGame :
           display.cleanup()
 
       sleep_ms(2000)
+
 
 
 

@@ -264,10 +264,11 @@ def drawScore () :
     display.fill_rect(92 + (gunW+2)*i, 0, 1, 2,1)
     display.fill_rect(90 + (gunW+2)*i, 2, gunW, 3,1)
 
-
-
 seed(ticks_us())
-while True:
+
+exitGame = False
+
+while not exitGame:
   gameOver = False
   usePaddle = False
   demo = False
@@ -330,7 +331,7 @@ while True:
       aBullets = []
       setUpInvaders()
       gun = Rect(screenL+int((screenR-screenL)/2), screenB, gunW, gunH)
-      aBulletChance = 1 + level
+      aBulletChance = 50 + level * 10
 
 
 
@@ -347,9 +348,9 @@ while True:
           if i.x >= screenR :
             spaceships.remove(i)
       if frameCount % 20 == 10 :
-        playTone ('e5', 50)
+        playTone ('e5', 20)
       elif frameCount % 20 == 0 :
-        playTone ('c5', 50)
+        playTone ('c5', 20)
         
 
     if not frameCount % 15 :
@@ -367,6 +368,9 @@ while True:
               if alien.y2 > gun.y :
                 lost = True
                 loadLevel = True
+                playTone ('f4',300)
+                playTone ('d4',100)
+                playTone ('c5',100)
                 break
             break
 
@@ -376,7 +380,7 @@ while True:
 
     getBtn()
     # Fire
-    if Btns & btnA and len(bullets) < 2:
+    if Btns & (btnA | btnB) and len(bullets) < 2:
       bullets.append(Rect(gun.x+3, gun.y-1, 1, 3))
       playSound (200,5)
       playSound (300,5)
@@ -397,7 +401,7 @@ while True:
     # move bullets
 
     for b in bullets:
-      b.move_ip(0,-2)
+      b.move_ip(0,-3)
       if b.y < 0 :
         bullets.remove(b)
       else :
@@ -420,12 +424,12 @@ while True:
 
     # Launch Alien bullets
     for i in invaders:
-      if getrandbits(9) < aBulletChance and len(aBullets) < 3 :
+      if getrandbits(10) * len (invaders) < aBulletChance and len(aBullets) < 3 :
         aBullets.append(Rect(i.x+2, i.y, 1, 3))
 
     # move Alien bullets
     for b in aBullets:
-      b.move_ip(0,2)
+      b.move_ip(0,3)
       if b.y > screenH  :
         aBullets.remove(b)
       elif b.colliderect(gun) :
@@ -476,5 +480,6 @@ while True:
 
     if timer_dif > 0 :
         sleep_ms(timer_dif)
+
 
 
