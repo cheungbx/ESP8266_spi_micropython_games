@@ -1,5 +1,5 @@
 # ----------------------------------------------------------
-#  Breakout Game
+#  Breakout Game SPI OLED display
 #  ESP8266 (node MCU D1 mini)  micropython
 # by Billy Cheung  2019 08 31
 #
@@ -115,7 +115,7 @@ def getBtn () :
             Btns |= btnD | btnA
           else :
             Btns |= btnR | btnA
-        elif a0 > 675 :
+        elif a0 > 683 :
           Btns |= btnA
         else :
           Btns |= btnL | btnB
@@ -472,15 +472,15 @@ class Score(object):
 def load_level(level, display) :
     global frameRate
     if demo :
-      frameRate = 60 + level * 10    
+      frameRate = 60 + level * 10
     else :
-      frameRate = 25 + level * 5    
+      frameRate = 25 + level * 5
     bricks = []
     for row in range(12, 20 + 6 * level , 6):
         brick_color = 1
         for col in range(8, 112, 15 ):
             bricks.append(Brick(col, row, brick_color, display))
-    
+
     return bricks
 
 
@@ -527,9 +527,9 @@ while not exitGame :
         display.text('DEMO', 5, 0, 1)
         display.text('A or B to Stop', 5, 30, 1)
         display.show()
-        sleep_ms(2000)  
+        sleep_ms(2000)
 
-      
+
     if not exitGame :
       display.fill(0)
 
@@ -572,7 +572,7 @@ while not exitGame :
                       gameover = True
                     else :
                       paddle.h_position(balls[0].x - 8 + getrandbits(3))
-                  else :  
+                  else :
                     paddle_vect = 0
                     if Btns & (btnL | btnA) :
                       paddle_vect = -1
@@ -677,7 +677,3 @@ while not exitGame :
           display.cleanup()
 
       sleep_ms(2000)
-
-
-
-

@@ -115,7 +115,7 @@ def getBtn () :
             Btns |= btnD | btnA
           else :
             Btns |= btnR | btnA
-        elif a0 > 675 :
+        elif a0 > 683 :
           Btns |= btnA
         else :
           Btns |= btnL | btnB
@@ -158,13 +158,18 @@ tones = {
     ' ': 0
 }
 
+def playTone(tone, tone_duration, rest_duration=0):
+  beeper = PWM(buzzer, freq=tones[tone], duty=512)
+  utime.sleep_ms(tone_duration)
+  beeper.deinit()
+  utime.sleep_ms(rest_duration)
 
-def playTone(tone, tone_duration, total_duration):
-            beeper = PWM(buzzer, freq=tones[tone], duty=512)
-            utime.sleep_ms(tone_duration)
-            beeper.deinit()
-            utime.sleep_ms(int(total_duration * 1000)-tone_duration)
-            
+def playSound(freq, tone_duration, rest_duration=0):
+  beeper = PWM(buzzer, freq, duty=512)
+  utime.sleep_ms(tone_duration)
+  beeper.deinit()
+  utime.sleep_ms(rest_duration)
+
 # ----------------------------------------------------------
 # Global variables
 # ----------------------------------------------------------
@@ -200,22 +205,22 @@ MODE_EXIT     = 5
 def tick():
     if not game['refresh']:
         clearSnakeTail()
-    
+
     if game['mode'] == MODE_PLAY:
         handleButtons()
         moveSnake()
         if game['refresh']:
             game['refresh'] = False
         if didSnakeEatApple():
-            playTone('d6', 20, 0.02)
-            playTone('c5', 20, 0.02)
-            playTone('f4', 20, 0.02)
+            playTone('d6', 20)
+            playTone('c5', 20)
+            playTone('f4', 20)
             game['score'] += 1
             game['refresh'] = True
             extendSnakeTail()
             spawnApple()
         if didSnakeBiteItsTail() or didSnakeHitTheWall():
-            playTone('c4', 500, 1)
+            playTone('c4', 500)
             game['mode'] = MODE_LOST
             game['refresh'] = True
     elif game['mode'] == MODE_LOST:
@@ -229,11 +234,11 @@ def tick():
         game['time']  = 0
     elif game['mode'] == MODE_READY:
         game['refresh'] = False
- 
+
         handleButtons()
         moveSnake()
         if snakeHasMoved():
-            playTone('c5', 100, 0.5)
+            playTone('c5', 100)
             game['mode'] = MODE_PLAY
     elif game['mode'] == MODE_EXIT:
         return
@@ -243,7 +248,7 @@ def tick():
     draw()
     game['time'] += 1
 
-    
+
 def spawnApple():
     apple['x'] = getrandbits (6) %  (COLS - 1)
     apple['y'] = getrandbits (7) % (ROWS - 1)
@@ -261,15 +266,15 @@ def handleButtons():
         dirSnake(0, 1)
   else :
     if pressed(btnA,True):
-      game['mode'] = MODE_START    
-      game['frame'] = 15 
+      game['mode'] = MODE_START
+      game['frame'] = 15
     elif pressed(btnB,True):
       game['mode'] = MODE_START
-      game['frame'] = 22 
+      game['frame'] = 22
     elif pressed(btnL,True):
       game['mode'] = MODE_EXIT
 
-    
+
 
 
 # ----------------------------------------------------------
@@ -344,7 +349,7 @@ def didSnakeHitTheWall():
 
 def draw():
     if game['mode'] == MODE_MENU:
-        drawGameMenu()  
+        drawGameMenu()
     elif game['mode'] == MODE_LOST:
         drawGameover()
     elif game['refresh']:
@@ -363,14 +368,14 @@ def clearScreen():
 def drawGameMenu():
     clearScreen();
     display.text("SNAKE",35,10,1)
-    display.text("A - SLOW",20,20,1)    
-    display.text("B - FAST",20,30,1)    
+    display.text("A - SLOW",20,20,1)
+    display.text("B - FAST",20,30,1)
     display.text("L - EXIT",20,40,1)
 def drawGameover():
     display.fill_rect(20,20,100,30,0)
     display.text("GAME OVER",20,20,1)
 
- 
+
 def drawWalls():
     color = COLOR_LOST_FG if game['mode'] == MODE_LOST else COLOR_WALL
     display.rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,color)
@@ -442,10 +447,3 @@ while game['mode'] != MODE_EXIT :
   timer = ticks_ms()
   tick()
   waitForUpdate()
-
-
-
-
-
-
-

@@ -115,7 +115,7 @@ def getBtn () :
             Btns |= btnD | btnA
           else :
             Btns |= btnR | btnA
-        elif a0 > 675 :
+        elif a0 > 683 :
           Btns |= btnA
         else :
           Btns |= btnL | btnB
@@ -171,7 +171,7 @@ def playSound(freq, tone_duration, rest_duration=0):
   utime.sleep_ms(tone_duration)
   beeper.deinit()
   utime.sleep_ms(rest_duration)
-       
+
 
 
 frameRate = 30
@@ -322,7 +322,7 @@ while not exitGame:
     lost = False
     frameCount = (frameCount + 1 ) % 120
     display.fill(0)
-      
+
     if loadLevel :
       loadLevel = False
       spaceships = []
@@ -351,15 +351,15 @@ while not exitGame:
         playTone ('e5', 20)
       elif frameCount % 20 == 0 :
         playTone ('c5', 20)
-        
+
 
     if not frameCount % 15 :
       postureA = not postureA
       # move Aliens once every 15 frames
       if postureA :
-          playSound (80, 10)        
+          playSound (80, 10)
       else:
-          playSound (120, 10)        
+          playSound (120, 10)
       for i in invaders:
         if i.x > screenR or i.x < screenL :
             dx = -dx
@@ -471,7 +471,7 @@ while not exitGame:
       playTone ('e4',100)
       playTone ('c4',100)
       display.show()
-      
+
       sleep_ms(2000)
 
     display.show()
@@ -480,6 +480,3 @@ while not exitGame:
 
     if timer_dif > 0 :
         sleep_ms(timer_dif)
-
-
-
