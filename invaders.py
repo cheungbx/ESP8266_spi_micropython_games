@@ -213,14 +213,35 @@ while not exitGame:
 
 
     g.getBtn()
-    # Fire
-    if g.Btns & (g.btnA | g.btnB) and len(bullets) < 2:
+
+    if demo :
+        if g.Btns & (g.btnA | g.btnB) :
+            gameOver = True
+
+        if g.random (0,1) and len(bullets) < 2:
+            bullets.append(Rect(gun.x+3, gun.y-1, 1, 3))
+            g.playSound (200,5)
+            g.playSound (300,5)
+            g.playSound (400,5)
+
+        if g.random(0,1) :
+            vc = 3
+        else :
+            vc = -3
+
+        if (vc + gun.x + gunW) < g.screenW and (vc + gun.x)  >= 0 :
+           gun.move_ip (vc, 0)
+
+    # Real player
+    elif g.Btns & (g.btnA | g.btnB) and len(bullets) < 2:
       bullets.append(Rect(gun.x+3, gun.y-1, 1, 3))
       g.playSound (200,5)
       g.playSound (300,5)
       g.playSound (400,5)
     # move gun
-    if usePaddle :
+
+
+    elif usePaddle :
       gun.x = int(g.getPaddle() / (1024/(screenR-screenL)))
       gun.x2 = gun.x+gunW-1
     else :
