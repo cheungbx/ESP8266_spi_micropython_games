@@ -67,7 +67,7 @@ class Game8266():
         self.display = ssd1306.SSD1306_SPI(128, 64, self.hspi, Pin(2), Pin(16), Pin(0))
         self.timer = 0
         seed(ticks_us())
-
+        self.tone_vol = 512
         #---buttons
 
         self.btnU = 1 << 1
@@ -107,31 +107,31 @@ class Game8266():
       self.pinBtn.on()
       self.Btns = 0
       a0=self.adc.read()
-      if a0  < 564 :
+      if a0  < 569 :
         if a0 < 361 :
-          if a0 > 192 :
-            if a0 > 278 :
+          if a0 > 188 :
+            if a0 > 277 :
               self.Btns |= self.btnU | self.btnA
             else :
               self.Btns |= self.btnL
           else:
-            if a0 > 70 :
+            if a0 > 68 :
               self.Btns |= self.btnU
         else :
-          if a0 > 482 :
-            if a0 > 527 :
+          if a0 > 485 :
+            if a0 > 530 :
               self.Btns |= self.btnD
             else :
               self.Btns |= self.btnU | self.btnB
           else:
-            if a0 > 440 :
+            if a0 > 442 :
               self.Btns |= self.btnL | self.btnA
             else :
               self.Btns |= self.btnR
       else:
-          if a0 < 728 :
-            if a0 < 653 :
-              if a0 > 609 :
+          if a0 < 736 :
+            if a0 < 661 :
+              if a0 > 616 :
                 self.Btns |= self.btnD | self.btnA
               else :
                 self.Btns |= self.btnR | self.btnA
@@ -139,25 +139,25 @@ class Game8266():
               self.Btns |= self.btnA
             else :
               self.Btns |= self.btnL | self.btnB
-          elif a0 < 829 :
-            if a0 > 794 :
+          elif a0 < 842 :
+            if a0 > 805 :
               self.Btns |= self.btnD | self.btnB
             else :
               self.Btns |= self.btnR | self.btnB
-          elif a0 > 857 :
+          elif a0 > 872 :
             self.Btns |= self.btnB
           else :
             self.Btns |= self.btnA | self.btnB
       return self.Btns
 
     def playTone(self, tone, tone_duration, rest_duration=0):
-        beeper = PWM(self.buzzer, freq=self.tones[tone], duty=512)
+        beeper = PWM(self.buzzer, freq=self.tones[tone], duty=self.tone_vol)
         sleep_ms(tone_duration)
         beeper.deinit()
         sleep_ms(rest_duration)
 
     def playSound(self, freq, tone_duration, rest_duration=0):
-        beeper = PWM(self.buzzer, freq, duty=512)
+        beeper = PWM(self.buzzer, freq, duty=self.tone_vol)
         sleep_ms(tone_duration)
         beeper.deinit()
         sleep_ms(rest_duration)
@@ -170,7 +170,7 @@ class Game8266():
         timer_dif = int(1000/frames_per_s) - ticks_diff(ticks_ms(), self.timer)
         if timer_dif > 0 :
             sleep_ms(timer_dif)
-            self.timer=ticks_ms()
+        self.timer=ticks_ms()
 
 
 class Rect (object):
