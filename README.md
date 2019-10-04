@@ -1,6 +1,22 @@
 # ESP8266_spi_micropython_games
 # A collection of micropython games written for ESP8266 Node MCU D1 Mini 
 # with SPI OLED display SSD1306 
+#
+# list of games
+# btntests.py - button , paddle and beeper testing tool
+# invaders.py - space invaders 
+# snakes.py - snakes biting apple game
+# pongs.py - 1 and 2 player ping pong games
+# brekouts.py - brick game
+# game8266.py - this is a common module required for all above games that controls the screens, buttons, paddles, and beepers, randominzatio and game refresh rates. 
+# 
+# note: due to the small CPU memory on the ESP8266, only 23K bytes, the above .py files need to be pre-compiled as byte codes using mpy-cross
+# mpy-cross snakes.py
+# the snakes.mpy file will be created.
+# then you can copy that file into the flash memory of the ESP8266.
+# Node MCU D1 mini is used for my build that have 4MB Flash memory, capable to store .mpy files (~5K byte) for many gams
+#
+#  The skematics of the set up can be found in the fizz files and jpg files
 #  using ADC to sense the voltage dividers from either the paddle or the six buttons
 #  and two control pins to activate either the paddle or the six buttons
 #  Beeper for sound
