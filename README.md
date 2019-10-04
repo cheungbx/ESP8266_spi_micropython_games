@@ -3,6 +3,8 @@
 # with SPI OLED display SSD1306 
 #
 # list of games
+# menus.py - menu system that should be called by main.py to be the first program running when boot up.
+#            this will be the launcher for other games.
 # btntests.py - button , paddle and beeper testing tool
 # invaders.py - space invaders 
 # snakes.py - snakes biting apple game
@@ -13,7 +15,12 @@
 # note: due to the small CPU memory on the ESP8266, only 23K bytes, the above .py files need to be pre-compiled as byte codes using mpy-cross
 # mpy-cross snakes.py
 # the snakes.mpy file will be created.
-# then you can copy that file into the flash memory of the ESP8266.
+# then you can copy that file into the flash memory of the ESP8266 using a terminal software e.g. rshell.
+# e.g. cpy snakes.mpy /pyboard
+# then to to repl to load the game.
+# repl
+# import snakes.
+#
 # Node MCU D1 mini is used for my build that have 4MB Flash memory, capable to store .mpy files (~5K byte) for many gams
 #
 #  The skematics of the set up can be found in the fizz files and jpg files
