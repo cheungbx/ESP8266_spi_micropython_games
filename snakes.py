@@ -26,163 +26,18 @@ gc.collect()
 print (gc.mem_free())
 import network
 import utime
-from utime import sleep_ms,ticks_ms, ticks_us, ticks_diff
-from machine import Pin, SPI, PWM, ADC
-from math import sqrt
-import ssd1306
-from random import getrandbits, seed
+from utime import sleep_ms
+from game8266 import Game8266, Rect
+g=Game8266()
+frameRate = 30
 
-# configure oled display SPI SSD1306
-hspi = SPI(1, baudrate=8000000, polarity=0, phase=0)
-#DC, RES, CS
-display = ssd1306.SSD1306_SPI(128, 64, hspi, Pin(2), Pin(16), Pin(0))
-
-
-
-#---buttons
-
-btnU = const (1 << 1)
-btnL = const (1 << 2)
-btnR = const (1 << 3)
-btnD = const (1 << 4)
-btnA = const (1 << 5)
-btnB = const (1 << 6)
-
-Btns = 0
-lastBtns = 0
-
-pinBtn = Pin(5, Pin.OUT)
-pinPaddle = Pin(4, Pin.OUT)
-
-
-buzzer = Pin(15, Pin.OUT)
-
-adc = ADC(0)
-
-def getPaddle () :
-  pinPaddle.on()
-  pinBtn.off()
-  sleep_ms(20)
-  return adc.read()
-
-def pressed (btn, waitRelease=False) :
-  global Btns
-  if waitRelease and Btns :
-    pinPaddle.off()
-    pinBtn.on()
-    while ADC(0).read() > 70 :
-       sleep_ms (20)
-  return (Btns & btn)
-
-def lastpressed (btn) :
-  global lastBtns
-  return (lastBtns & btn)
-
-
-def getBtn () :
-  global Btns
-  global lastBtns
-  pinPaddle.off()
-  pinBtn.on()
-  lastBtns = Btns
-  Btns = 0
-  a0=ADC(0).read()
-  if a0  < 564 :
-    if a0 < 361 :
-      if a0 > 192 :
-        if a0 > 278 :
-          Btns |= btnU | btnA
-        else :
-          Btns |= btnL
-      else:
-        if a0 > 70 :
-          Btns |= btnU
-    else :
-      if a0 > 482 :
-        if a0 > 527 :
-          Btns |= btnD
-        else :
-          Btns |= btnU | btnB
-      else:
-        if a0 > 440 :
-          Btns |= btnL | btnA
-        else :
-          Btns |= btnR
-  else:
-      if a0 < 728 :
-        if a0 < 653 :
-          if a0 > 609 :
-            Btns |= btnD | btnA
-          else :
-            Btns |= btnR | btnA
-        elif a0 > 683 :
-          Btns |= btnA
-        else :
-          Btns |= btnL | btnB
-      elif a0 < 829 :
-        if a0 > 794 :
-          Btns |= btnD | btnB
-        else :
-          Btns |= btnR | btnB
-      elif a0 > 857 :
-        Btns |= btnB
-      else :
-        Btns |= btnA | btnB
-
-
-tones = {
-    'c4': 262,
-    'd4': 294,
-    'e4': 330,
-    'f4': 349,
-    'f#4': 370,
-    'g4': 392,
-    'g#4': 415,
-    'a4': 440,
-    "a#4": 466,
-    'b4': 494,
-    'c5': 523,
-    'c#5': 554,
-    'd5': 587,
-    'd#5': 622,
-    'e5': 659,
-    'f5': 698,
-    'f#5': 740,
-    'g5': 784,
-    'g#5': 831,
-    'a5': 880,
-    'b5': 988,
-    'c6': 1047,
-    'c#6': 1109,
-    'd6': 1175,
-    ' ': 0
-}
-
-def playTone(tone, tone_duration, rest_duration=0):
-  beeper = PWM(buzzer, freq=tones[tone], duty=512)
-  utime.sleep_ms(tone_duration)
-  beeper.deinit()
-  utime.sleep_ms(rest_duration)
-
-def playSound(freq, tone_duration, rest_duration=0):
-  beeper = PWM(buzzer, freq, duty=512)
-  utime.sleep_ms(tone_duration)
-  beeper.deinit()
-  utime.sleep_ms(rest_duration)
-
-# ----------------------------------------------------------
-# Global variables
-# ----------------------------------------------------------
-
-SCREEN_WIDTH  = 128
-SCREEN_HEIGHT = 64
 SNAKE_SIZE    = 4
 SNAKE_LENGTH  = 4
 SNAKE_EXTENT  = 2
-COLS          = (SCREEN_WIDTH  - 4) // SNAKE_SIZE
-ROWS          = (SCREEN_HEIGHT - 4) // SNAKE_SIZE
-OX            = (SCREEN_WIDTH  - COLS * SNAKE_SIZE) // 2
-OY            = (SCREEN_HEIGHT - ROWS * SNAKE_SIZE) // 2
+COLS          = (g.screenW  - 4) // SNAKE_SIZE
+ROWS          = (g.screenH - 4) // SNAKE_SIZE
+OX            = (g.screenW  - COLS * SNAKE_SIZE) // 2
+OY            = (g.screenH - ROWS * SNAKE_SIZE) // 2
 COLOR_BG      = 0
 COLOR_WALL    = 1
 COLOR_SNAKE   = 1
@@ -212,15 +67,15 @@ def tick():
         if game['refresh']:
             game['refresh'] = False
         if didSnakeEatApple():
-            playTone('d6', 20)
-            playTone('c5', 20)
-            playTone('f4', 20)
+            g.playTone('d6', 20)
+            g.playTone('c5', 20)
+            g.playTone('f4', 20)
             game['score'] += 1
             game['refresh'] = True
             extendSnakeTail()
             spawnApple()
         if didSnakeBiteItsTail() or didSnakeHitTheWall():
-            playTone('c4', 500)
+            g.playTone('c4', 500)
             game['mode'] = MODE_LOST
             game['refresh'] = True
     elif game['mode'] == MODE_LOST:
@@ -238,7 +93,7 @@ def tick():
         handleButtons()
         moveSnake()
         if snakeHasMoved():
-            playTone('c5', 100)
+            g.playTone('c5', 100)
             game['mode'] = MODE_PLAY
     elif game['mode'] == MODE_EXIT:
         return
@@ -250,28 +105,32 @@ def tick():
 
 
 def spawnApple():
-    apple['x'] = getrandbits (6) %  (COLS - 1)
-    apple['y'] = getrandbits (7) % (ROWS - 1)
+    apple['x'] = g.random (1, COLS - 2)
+    apple['y'] = g.random (1, ROWS - 2)
 
 def handleButtons():
-  getBtn()
+
+  g.getBtn()
   if game['mode'] != MODE_MENU :
-    if Btns & btnL:
+    if g.Btns & g.btnL:
         dirSnake(-1, 0)
-    elif Btns & btnR:
+    elif g.Btns & g.btnR:
         dirSnake(1, 0)
-    elif Btns & btnU:
+    elif g.Btns & g.btnU:
         dirSnake(0, -1)
-    elif Btns & btnD:
+    elif g.Btns & g.btnD:
         dirSnake(0, 1)
   else :
-    if pressed(btnA,True):
+    if g.pressed(g.btnA,True):
       game['mode'] = MODE_START
       game['frame'] = 15
-    elif pressed(btnB,True):
+    elif g.pressed(g.btnB,True):
       game['mode'] = MODE_START
-      game['frame'] = 22
-    elif pressed(btnL,True):
+      game['frame'] = 20
+    elif g.pressed(g.btnU,True):
+      game['mode'] = MODE_START
+      game['frame'] = 25
+    elif g.pressed(g.btnL,True):
       game['mode'] = MODE_EXIT
 
 
@@ -360,25 +219,26 @@ def draw():
         drawSnakeHead()
     drawScore()
     drawApple()
-    display.show()
+    g.display.show()
 
 def clearScreen():
     color = COLOR_LOST_BG if game['mode'] == MODE_LOST else COLOR_BG
-    display.fill(color)
+    g.display.fill(color)
 def drawGameMenu():
     clearScreen();
-    display.text("SNAKE",35,10,1)
-    display.text("A - SLOW",20,20,1)
-    display.text("B - FAST",20,30,1)
-    display.text("L - EXIT",20,40,1)
+    g.display.text("SNAKE",35,10,1)
+    g.display.text("A - SLOW",20,20,1)
+    g.display.text("B - FAST",20,30,1)
+    g.display.text("U - SUPER",20,40,1)
+    g.display.text("L - EXIT",20,50,1)
 def drawGameover():
-    display.fill_rect(20,20,100,30,0)
-    display.text("GAME OVER",20,20,1)
+    g.display.fill_rect(20,20,100,30,0)
+    g.display.text("GAME OVER",20,20,1)
 
 
 def drawWalls():
     color = COLOR_LOST_FG if game['mode'] == MODE_LOST else COLOR_WALL
-    display.rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,color)
+    g.display.rect(0, 0, g.screenW, g.screenH,color)
 
 def drawSnake():
     isTimeToBlink = game['time'] % 4 < 2
@@ -398,28 +258,20 @@ def clearSnakeTail():
     drawDot(snake['x'][t], snake['y'][t], COLOR_BG)
 
 def drawScore():
-    display.text(str(game['score']),2,2,1)
+    g.display.text(str(game['score']),2,2,1)
 
 def drawApple():
     drawDot(apple['x'], apple['y'], COLOR_APPLE)
 
 def drawDot(x, y, color):
-    display.fill_rect(OX + x * SNAKE_SIZE, OY + y * SNAKE_SIZE, SNAKE_SIZE, SNAKE_SIZE,color)
+    g.display.fill_rect(OX + x * SNAKE_SIZE, OY + y * SNAKE_SIZE, SNAKE_SIZE, SNAKE_SIZE,color)
 
-def waitForUpdate():
-    # wait the amount of them that makes up 30 frame per second
-    timer_dif = int(1000/game['frame']) - ticks_diff(ticks_ms(), timer)
-    if timer_dif > 0:
-      sleep_ms(timer_dif)
-    return
 
 
 # ----------------------------------------------------------
 # Initialization
 # ----------------------------------------------------------
 
-# Seed random numbers
-seed(ticks_us())
 
 game = {
     'mode':    MODE_MENU,
@@ -444,6 +296,5 @@ apple = { 'x': 0, 'y': 0 }
 # Main loop
 # ----------------------------------------------------------
 while game['mode'] != MODE_EXIT :
-  timer = ticks_ms()
   tick()
-  waitForUpdate()
+  g.display_and_wait(game['frame'])
