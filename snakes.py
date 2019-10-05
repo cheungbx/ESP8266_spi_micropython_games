@@ -34,10 +34,10 @@ g=Game8266()
 SNAKE_SIZE    = 2
 SNAKE_LENGTH  = 4
 SNAKE_EXTENT  = 2
-COLS          = (g.screenW  - 4) // SNAKE_SIZE
-ROWS          = (g.screenH - 4) // SNAKE_SIZE
-OX            = (g.screenW  - COLS * SNAKE_SIZE) // 2
-OY            = (g.screenH - ROWS * SNAKE_SIZE) // 2
+COLS          = 0
+ROWS          = 0
+OX            = 0
+OY            = 0
 COLOR_BG      = 0
 COLOR_WALL    = 1
 COLOR_SNAKE   = 1
@@ -58,11 +58,11 @@ MODE_EXIT     = 5
 # ----------------------------------------------------------
 
 def tick():
+    handleButtons()
+
     if not game['refresh']:
         clearSnakeTail()
-
     if game['mode'] == MODE_PLAY:
-        handleButtons()
         moveSnake()
         if game['refresh']:
             game['refresh'] = False
@@ -78,14 +78,15 @@ def tick():
             g.playTone('c4', 500)
             game['mode'] = MODE_LOST
             game['refresh'] = True
-            debugSnake()
-            g.display.show()
-            sleep_ms(2000)
     elif game['mode'] == MODE_LOST:
         sleep_ms(2000)
+        game['refresh'] = True
         game['mode'] = MODE_MENU
+    elif game['mode'] == MODE_MENU:
+        game['refresh'] = True
     elif game['mode'] == MODE_START:
         # print ("======================")
+        game['refresh'] = True
         resetSnake()
         spawnApple()
         game['mode'] = MODE_READY
@@ -93,8 +94,6 @@ def tick():
         game['time']  = 0
     elif game['mode'] == MODE_READY:
         game['refresh'] = False
-
-        handleButtons()
         moveSnake()
         if snakeHasMoved():
             g.playTone('c5', 100)
@@ -131,26 +130,20 @@ def noCrash (x,y):
     return True
 
 def handleButtons():
-
+  global SNAKE_SIZE
   g.getBtn()
   if game['mode'] == MODE_MENU :
-      if g.pressed(g.btnA,True):
-        game['mode'] = MODE_START
-        game['demo'] = False
-        game['frame'] = 15
-      elif g.pressed(g.btnB,True):
-        game['mode'] = MODE_START
-        game['demo'] = False
-        game['frame'] = 20
-      elif g.pressed(g.btnD,True):
+    if g.justPressed(g.btnA):
+        SNAKE_SIZE = 2 if SNAKE_SIZE > 2 else 4
+    elif g.justPressed(g.btnB):
+        game['frame'] = 10 if game['frame'] >= 30 else game['frame']+ 5
+    elif g.justPressed(g.btnD):
         game['mode'] = MODE_START
         game['demo'] = True
-        game['frame'] = 30
-      elif g.pressed(g.btnU,True):
+    elif g.justPressed(g.btnU):
         game['mode'] = MODE_START
         game['demo'] = False
-        game['frame'] = 25
-      elif g.pressed(g.btnL,True):
+    elif g.pressed(g.btnL):
         game['mode'] = MODE_EXIT
   else :
     if game['demo'] :
@@ -190,30 +183,38 @@ def handleButtons():
             dirSnake(0, -1)
             # print ("H")
     else :
-        if g.Btns & g.btnL:
+        if g.justPressed (g.btnL):
             dirSnake(-1, 0)
-        elif g.Btns & g.btnR:
+        elif g.justPressed(g.btnR):
             dirSnake(1, 0)
-        elif g.Btns & g.btnU:
+        elif g.justPressed(g.btnU):
             dirSnake(0, -1)
-        elif g.Btns & g.btnD:
+        elif g.justPressed(g.btnD):
             dirSnake(0, 1)
+        elif g.justPressed(g.btnA):
+            if snake['vx'] == 1:
+                dirSnake(0, 1)
+            elif snake['vx'] == -1:
+                dirSnake(0, -1)
+            elif snake['vy'] == 1:
+                dirSnake(-1, 0)
+            elif snake['vy'] == -1:
+                dirSnake(1, 0)
+            elif snake['vx']==0 and snake['vy']==0 :
+                dirSnake(0, 1)
+        elif g.justPressed(g.btnB):
+            if snake['vx'] == 1:
+                dirSnake(0, -1)
+            elif snake['vx'] == -1:
+                dirSnake(0, 1)
+            elif snake['vy'] == 1:
+                dirSnake(1, 0)
+            elif snake['vy'] == -1:
+                dirSnake(-1, 0)
+            elif snake['vx']==0 and snake['vy']==0 :
+                dirSnake(1, 0)
 
 
-
-'''
-        elif Hx < apple['x'] and Hx < COLS -1 and Hx >= Sx and smart() and checkTail(Hx+1, Hy):
-            dirSnake(1, 0)
-            # print ("E")
-        elif Hx > apple['x'] and Hx > 0 and Hx <= Sx and smart() and checkTail(Hx-1, Hy):
-            dirSnake(-1, 0)
-            # print ("F")
-        elif Hy < apple['y'] and Hy < ROWS -1 and Hy >= Sy and smart() and checkTail(Hx, Hy+1):
-            dirSnake(0, 1)
-            # print ("G")
-        elif Hy > apple['y'] and Hy > 0 and Hy <= Sy and smart() and checkTail(Hx, Hy-1):
-            dirSnake(0, -1)
-            # print ("H") '''
 
 
 # ----------------------------------------------------------
@@ -221,8 +222,13 @@ def handleButtons():
 # ----------------------------------------------------------
 
 def resetSnake():
-    x = COLS // 2
-    y = ROWS // 2
+    global COLS, ROWS, OX, OY
+    COLS          = (g.screenW  - 4) // SNAKE_SIZE
+    ROWS          = (g.screenH - 4) // SNAKE_SIZE
+    OX            = (g.screenW  - COLS * SNAKE_SIZE) // 2
+    OY            = (g.screenH - ROWS * SNAKE_SIZE) // 2
+    x = COLS // SNAKE_SIZE
+    y = ROWS // SNAKE_SIZE
     snake['x'] = []
     snake['y'] = []
     for _ in range(SNAKE_LENGTH):
@@ -306,13 +312,16 @@ def draw():
 def clearScreen():
     color = COLOR_LOST_BG if game['mode'] == MODE_LOST else COLOR_BG
     g.display.fill(color)
+
 def drawGameMenu():
-    clearScreen();
-    g.display.text("A - SLOW",20,10,1)
-    g.display.text("B - FAST",20,20,1)
-    g.display.text("U - SUPER",20,30,1)
-    g.display.text("D - DEMO",20,40,1)
-    g.display.text("L - EXIT",20,50,1)
+    global SNAKE_SIZE
+    clearScreen()
+    g.display.text("SNAKE".format(SNAKE_SIZE),5,0,1)
+    g.display.text("A - SIZE {}".format(SNAKE_SIZE),5,10,1)
+    g.display.text("B - FRAME {}".format(game['frame']),5,20,1)
+    g.display.text("U - PLAY",5,30,1)
+    g.display.text("D - DEMO",5,40,1)
+    g.display.text("L - EXIT",5,50,1)
 def drawGameover():
     g.display.fill_rect(20,20,100,30,0)
     g.display.text("GAME OVER",20,20,1)
@@ -352,7 +361,7 @@ def clearSnakeTail():
     drawDot(snake['x'][t], snake['y'][t], COLOR_BG)
 
 def drawScore():
-    g.display.text(str(game['score']),2,2,1)
+    g.display.text(str(game['score']),90,2,1)
 
 def drawApple():
     drawDot(apple['x'], apple['y'], COLOR_APPLE)
