@@ -136,7 +136,7 @@ def handleButtons():
     if g.justPressed(g.btnU):
         SNAKE_SIZE = 2 if SNAKE_SIZE > 2 else 4
     elif g.justPressed(g.btnR):
-        game['frame'] = 10 if game['frame'] >= 30 else game['frame']+ 5
+        game['frame'] = 10 if game['frame'] >= 60 else game['frame']+ 5
     elif g.justPressed(g.btnD):
         game['mode'] = MODE_START
         game['demo'] = True
