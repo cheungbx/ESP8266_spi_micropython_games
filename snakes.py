@@ -23,15 +23,15 @@
 import gc
 import sys
 gc.collect()
-print (gc.mem_free())
+# print (gc.mem_free())
 import network
 import utime
 from utime import sleep_ms
 from game8266 import Game8266, Rect
 g=Game8266()
-frameRate = 30
 
-SNAKE_SIZE    = 4
+
+SNAKE_SIZE    = 2
 SNAKE_LENGTH  = 4
 SNAKE_EXTENT  = 2
 COLS          = (g.screenW  - 4) // SNAKE_SIZE
@@ -78,10 +78,14 @@ def tick():
             g.playTone('c4', 500)
             game['mode'] = MODE_LOST
             game['refresh'] = True
+            debugSnake()
+            g.display.show()
+            sleep_ms(2000)
     elif game['mode'] == MODE_LOST:
         sleep_ms(2000)
         game['mode'] = MODE_MENU
     elif game['mode'] == MODE_START:
+        # print ("======================")
         resetSnake()
         spawnApple()
         game['mode'] = MODE_READY
@@ -108,32 +112,108 @@ def spawnApple():
     apple['x'] = g.random (1, COLS - 2)
     apple['y'] = g.random (1, ROWS - 2)
 
+def smart():
+    if g.random(0,199) < 200 :
+        return True
+        return False
+
+def noCrash (x,y):
+    h = snake['head']
+    n = snake['len']
+    # hit walls ?
+    if x < 0 or x > COLS-1 or y < 0 or y > ROWS-1:
+        return False
+    # hit snake body ?
+    for i in range(n):
+        if i !=h and snake['x'][i] == x and snake['y'][i] == y:
+            return False
+        i = (i + 1) % n
+    return True
+
 def handleButtons():
 
   g.getBtn()
-  if game['mode'] != MODE_MENU :
-    if g.Btns & g.btnL:
-        dirSnake(-1, 0)
-    elif g.Btns & g.btnR:
-        dirSnake(1, 0)
-    elif g.Btns & g.btnU:
-        dirSnake(0, -1)
-    elif g.Btns & g.btnD:
-        dirSnake(0, 1)
+  if game['mode'] == MODE_MENU :
+      if g.pressed(g.btnA,True):
+        game['mode'] = MODE_START
+        game['demo'] = False
+        game['frame'] = 15
+      elif g.pressed(g.btnB,True):
+        game['mode'] = MODE_START
+        game['demo'] = False
+        game['frame'] = 20
+      elif g.pressed(g.btnD,True):
+        game['mode'] = MODE_START
+        game['demo'] = True
+        game['frame'] = 30
+      elif g.pressed(g.btnU,True):
+        game['mode'] = MODE_START
+        game['demo'] = False
+        game['frame'] = 25
+      elif g.pressed(g.btnL,True):
+        game['mode'] = MODE_EXIT
   else :
-    if g.pressed(g.btnA,True):
-      game['mode'] = MODE_START
-      game['frame'] = 15
-    elif g.pressed(g.btnB,True):
-      game['mode'] = MODE_START
-      game['frame'] = 20
-    elif g.pressed(g.btnU,True):
-      game['mode'] = MODE_START
-      game['frame'] = 25
-    elif g.pressed(g.btnL,True):
-      game['mode'] = MODE_EXIT
+    if game['demo'] :
+        if g.Btns & (g.btnA | g.btnB):
+            game['mode'] = MODE_LOST
+            game['refresh'] = True
+        #get snake's head position
+        h = snake['head']
+        Hx = snake['x'][h]
+        Hy = snake['y'][h]
+        #get snake's neck position
+        # print ("h={} {}:{}  C={} R={}".format (h,Hx,Hy, COLS, ROWS))
+
+        # move closer to the apple, if smart enough
+        if Hx < apple['x'] and smart() and noCrash(Hx+1, Hy):
+            dirSnake(1, 0)
+            # print ("A")
+        elif Hx > apple['x'] and smart() and noCrash(Hx-1, Hy):
+            dirSnake(-1, 0)
+            # print ("B")
+        elif Hy < apple['y'] and smart() and noCrash(Hx, Hy+1):
+            dirSnake(0, 1)
+            # print ("C")
+        elif Hy > apple['y'] and smart() and noCrash(Hx, Hy-1):
+            dirSnake(0, -1)
+            # print ("D")
+        elif  noCrash(Hx+1, Hy):
+            dirSnake(1, 0)
+            # print ("E")
+        elif noCrash(Hx-1, Hy):
+            dirSnake(-1, 0)
+            # print ("F")
+        elif noCrash(Hx, Hy+1):
+            dirSnake(0, 1)
+            # print ("G")
+        elif noCrash(Hx, Hy-1):
+            dirSnake(0, -1)
+            # print ("H")
+    else :
+        if g.Btns & g.btnL:
+            dirSnake(-1, 0)
+        elif g.Btns & g.btnR:
+            dirSnake(1, 0)
+        elif g.Btns & g.btnU:
+            dirSnake(0, -1)
+        elif g.Btns & g.btnD:
+            dirSnake(0, 1)
 
 
+
+'''
+        elif Hx < apple['x'] and Hx < COLS -1 and Hx >= Sx and smart() and checkTail(Hx+1, Hy):
+            dirSnake(1, 0)
+            # print ("E")
+        elif Hx > apple['x'] and Hx > 0 and Hx <= Sx and smart() and checkTail(Hx-1, Hy):
+            dirSnake(-1, 0)
+            # print ("F")
+        elif Hy < apple['y'] and Hy < ROWS -1 and Hy >= Sy and smart() and checkTail(Hx, Hy+1):
+            dirSnake(0, 1)
+            # print ("G")
+        elif Hy > apple['y'] and Hy > 0 and Hy <= Sy and smart() and checkTail(Hx, Hy-1):
+            dirSnake(0, -1)
+            # print ("H") '''
 
 
 # ----------------------------------------------------------
@@ -196,6 +276,8 @@ def didSnakeBiteItsTail():
         i = (i + 1) % n
     return False
 
+
+
 def didSnakeHitTheWall():
     h = snake['head']
     x = snake['x'][h]
@@ -226,10 +308,10 @@ def clearScreen():
     g.display.fill(color)
 def drawGameMenu():
     clearScreen();
-    g.display.text("SNAKE",35,10,1)
-    g.display.text("A - SLOW",20,20,1)
-    g.display.text("B - FAST",20,30,1)
-    g.display.text("U - SUPER",20,40,1)
+    g.display.text("A - SLOW",20,10,1)
+    g.display.text("B - FAST",20,20,1)
+    g.display.text("U - SUPER",20,30,1)
+    g.display.text("D - DEMO",20,40,1)
     g.display.text("L - EXIT",20,50,1)
 def drawGameover():
     g.display.fill_rect(20,20,100,30,0)
@@ -239,6 +321,18 @@ def drawGameover():
 def drawWalls():
     color = COLOR_LOST_FG if game['mode'] == MODE_LOST else COLOR_WALL
     g.display.rect(0, 0, g.screenW, g.screenH,color)
+
+def debugSnake():
+    n = snake['len']
+    i = snake['head']
+    for _ in range(n):
+
+        # print(snake['x'][i], snake['y'][i])
+        if (i - 1) < 0 :
+            i=n-1
+        else :
+            i-=1
+
 
 def drawSnake():
     isTimeToBlink = game['time'] % 4 < 2
@@ -278,7 +372,8 @@ game = {
     'score':   0,
     'time':    0,
     'frame':   15,
-    'refresh': True
+    'refresh': True,
+    'demo':    False
 }
 
 snake = {
