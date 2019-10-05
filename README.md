@@ -10,13 +10,13 @@
 # snakes.py - snakes biting apple game
 # pongs.py - 1 and 2 player ping pong games
 # brekouts.py - brick game
-# game8266.py - this is a common module required for all above games that controls the screens, buttons, paddles, and beepers, randominzatio and game refresh rates. 
+# game8266.py - this is a common module required for all above games that controls the screens, buttons, paddles, and beepers, randominzatio and game refresh rates. pre-compile using mpy-cross to make game8266.mpy. Copy this file to the same directory as the other .mpy files.
 # 
 # note: due to the small CPU memory on the ESP8266, only 23K bytes, the above .py files need to be pre-compiled as byte codes using mpy-cross
 # mpy-cross snakes.py
 # the snakes.mpy file will be created.
 # then you can copy that file into the flash memory of the ESP8266 using a terminal software e.g. rshell.
-# e.g. cpy snakes.mpy /pyboard
+# e.g. cp snakes.mpy /pyboard
 # then to to repl to load the game.
 # repl
 # import snakes.
