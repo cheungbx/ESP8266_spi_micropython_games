@@ -19,7 +19,7 @@
 # e.g. cp snakes.mpy /pyboard
 # then to to repl to load the game.
 # repl
-# import snakes.
+# import snakes
 #
 # Node MCU D1 mini is used for my build that have 4MB Flash memory, capable to store .mpy files (~5K byte) for many gams
 #
