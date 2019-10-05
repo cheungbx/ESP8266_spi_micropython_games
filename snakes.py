@@ -133,17 +133,17 @@ def handleButtons():
   global SNAKE_SIZE
   g.getBtn()
   if game['mode'] == MODE_MENU :
-    if g.justPressed(g.btnA):
+    if g.justPressed(g.btnU):
         SNAKE_SIZE = 2 if SNAKE_SIZE > 2 else 4
-    elif g.justPressed(g.btnB):
+    elif g.justPressed(g.btnR):
         game['frame'] = 10 if game['frame'] >= 30 else game['frame']+ 5
     elif g.justPressed(g.btnD):
         game['mode'] = MODE_START
         game['demo'] = True
-    elif g.justPressed(g.btnU):
+    elif g.justPressed(g.btnA):
         game['mode'] = MODE_START
         game['demo'] = False
-    elif g.pressed(g.btnL):
+    elif g.pressed(g.btnB):
         game['mode'] = MODE_EXIT
   else :
     if game['demo'] :
@@ -317,9 +317,9 @@ def drawGameMenu():
     global SNAKE_SIZE
     clearScreen()
     g.display.text("SNAKE".format(SNAKE_SIZE),5,0,1)
-    g.display.text("A - SIZE {}".format(SNAKE_SIZE),5,10,1)
-    g.display.text("B - FRAME {}".format(game['frame']),5,20,1)
-    g.display.text("U - PLAY",5,30,1)
+    g.display.text("U - SIZE {}".format(SNAKE_SIZE),5,10,1)
+    g.display.text("R - FRAME {}".format(game['frame']),5,20,1)
+    g.display.text("A - PLAY",5,30,1)
     g.display.text("D - DEMO",5,40,1)
     g.display.text("L - EXIT",5,50,1)
 def drawGameover():
@@ -361,7 +361,7 @@ def clearSnakeTail():
     drawDot(snake['x'][t], snake['y'][t], COLOR_BG)
 
 def drawScore():
-    g.display.text(str(game['score']),90,2,1)
+    g.display.text(str(game['score']),50,0,1)
 
 def drawApple():
     drawDot(apple['x'], apple['y'], COLOR_APPLE)
