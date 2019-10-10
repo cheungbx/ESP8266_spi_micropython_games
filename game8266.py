@@ -1,8 +1,37 @@
 # game8266.py
-# game hat module to use SSD1306 SPI OLED and 6 buttons
+# common micropython module for ESP8266 game board designed by Billy Cheung (c) 2019 08 31
+# --usage--
+# Using this common micropython game module, you can write micropython games to run
+# either on the SPI OLED or I2C OLED without chaning a line of code.
+# You only need to set the following line in game8266.py file at the __init__ function
+#        self.useSPI = True  # for SPI display , with buttons read through ADC
+#        self.useSPI = False  # for I2C display, and individual hard buttons
+#
+# Note:  esp8266 is very bad at running .py micropython source code files
+# with its very limited CPU onboard memory of 32K
+# so to run any program with > 300 lines of micropython codes combined (including all modules),
+# you need to convert source files into byte code first to avoid running out of memory.
+# Install a version of the  mpy-cross micropython pre-compiler that can run in your system (available from github).
+# Type this command to convert game8266.py to the byte code file game8266.mpy  using mpy-cross.
+#        mpy-cross game8266.py
+# then copy the game8266.mpy file to the micropython's import directory on the flash
+# create your game and leaverge the functions to display, read buttons and paddle and make sounds
+# from the game8266 class module.
+# Add this line to your micropython game source code (examples attached, e.g. invader.py)
+#       from game8266 import Game8266, Rect
+#       g=Game8266()
+#
+#
+#
+#-----------------------------------------
+# SPI version of game board layout
+# ----------------------------------------
+# micropython game hat module to use SSD1306 SPI OLED, 6 buttons and a paddle
+# SPI display runs 5 times faster than I2C  display in micropython and you need this speeds
+# for games with many moving graphics (e.g. space invdader, breakout).
+#
 # Buttons are read through A0 using many resistors in a  Voltage Divider circuit
 # ESP8266 (node MCU D1 mini)  micropython
-# by Billy Cheung  2019 08 31
 #
 # SPI OLED
 # GND
@@ -14,23 +43,62 @@
 # CS     - D3 (=GPIO0)
 # Speaker
 # GPIO15   D8  Speaker
-# n.c.   - D6  (=GPIO13=HMOSI)
+# n.c.   - D6  (=GPIO12=HMISO)
 #
-# GPIO5    D1——   On to read ADC for Btn
-# GPIO4    D2——   On to read ADC for Paddle
+# The ADC(0) (aka A0) is used to read both paddles and Buttons
+# these two pins together control whether buttons or paddle will be read
+# GPIO5    D1—— PinBtn
+# GPIO4    D2—— pinPaddle
+# To read buttons - Pin.Btn.On()  Pin.Paddle.off()
+# To read paddle  - Pin.Btn.Off()  Pin.Paddle.on()
 #
-# buttons   A0
-# A0 VCC-9K-U-9K-L-12K-R-9K-D-9K-A-12K-B-9K-GND
+# buttons are connected in series to create a voltage dividor
+# Each directional and A , B button when pressed will connect that point of
+# the voltage dividor to A0 to read the ADC value to determine which button is pressed.
+# resistor values are chosen to ensure we have at least a gap of 10 between each button combinations.
+# L, R, U, D, can be pressed individually but not toghether.
+# A, B, can be pressed invididually but not together.
+# any one of A or B, can be pressed together with any one of L,R,U,D
+# so you can move the gun using L,R, U,D, while shooting with A or B.
 #
+# refer to the schematics on my github for how to hook it up
+#
+# 3.3V-9K-Up-9K-Left-12K-Right-9K-Down-9K-A button-12K-B Button-9K-GND
+#
+#-----------------------------------------
+# I2C version of game board layout
+# ----------------------------------------
+# mocropython game hat module to use SSD1306 I2C OLED, 6 buttons and a paddle
+# I2C display runs 5 times slower than I2C display in micropython.
+# Games with many moving graphics (e.g. space invdader, breakout) will run slower.
+#
+# Buttons are read through indvidial GPIO pins (pulled high).
+#
+# I2C OLED SSD1306
+# GPIO4   D2---  SDA OLED
+# GPIO5   D1---  SCL  OLED
+#
+# Speaker
+# GPIO15  D8     Speaker
+#
+# Buttons are connect to GND when pressed, except for B button
+# GPIO12  D6——   Left  
+# GPIO13  D7——   Right     
+# GPIO14  D5——   UP    
+# GPIO2   D4——   Down    
+# GPIO0   D3——   A
+# GPIO16   D0——  B
+# * GPIO16 cannot be pulled high by softeware, connect a 10K resisor to VCC to pull high
 
 import utime
 from utime import sleep_ms,ticks_ms, ticks_us, ticks_diff
-from machine import Pin, SPI, PWM, ADC
+from machine import Pin, SPI,I2C, PWM, ADC
 import ssd1306
 from random import getrandbits, seed
 
 class Game8266():
-
+    max_vol = 6
+    duty={0:0,1:1,2:3,3:5,4:10,5:70,6:512}
     tones = {
         'c4': 262,
         'd4': 294,
@@ -60,16 +128,11 @@ class Game8266():
     }
 
     def __init__(self):
-
-        # configure oled display SPI SSD1306
-        self.hspi = SPI(1, baudrate=8000000, polarity=0, phase=0)
-        #DC, RES, CS
-        self.display = ssd1306.SSD1306_SPI(128, 64, self.hspi, Pin(2), Pin(16), Pin(0))
+        # True =  SPI display, False = I2C display
+        self.useSPI = True
         self.timer = 0
+        self.vol = int(self.max_vol/2) + 1
         seed(ticks_us())
-        self.tone_vol = 512
-        #---buttons
-
         self.btnU = 1 << 1
         self.btnL = 1 << 2
         self.btnR = 1 << 3
@@ -80,84 +143,122 @@ class Game8266():
         self.screenW = 128
         self.screenH = 64
         self.Btns = 0
-
-        self.pinBtn = Pin(5, Pin.OUT)
-        self.pinPaddle = Pin(4, Pin.OUT)
+        self.lastBtns = 0
         self.adc = ADC(0)
+        self.PinBuzzer = Pin(15, Pin.OUT)
+        if self.useSPI :
+            # configure oled display SPI SSD1306
+            self.hspi = SPI(1, baudrate=8000000, polarity=0, phase=0)
+            #DC, RES, CS
+            self.display = ssd1306.SSD1306_SPI(128, 64, self.hspi, Pin(2), Pin(16), Pin(0))
+            self.pinBtn = Pin(5, Pin.OUT)
+            self.pinPaddle = Pin(4, Pin.OUT)
+        else :  # I2C display
 
-        self.buzzer = Pin(15, Pin.OUT)
+            # configure oled display I2C SSD1306
+            self.i2c = I2C(-1, Pin(5), Pin(4))   # SCL, SDA
+            self.display = ssd1306.SSD1306_I2C(128, 64, self.i2c)
+            self.PinBtnL = Pin(12, Pin.IN, Pin.PULL_UP)
+            self.PinBtnR = Pin(13, Pin.IN, Pin.PULL_UP)
+            self.PinBtnU = Pin(14, Pin.IN, Pin.PULL_UP)
+            self.PinBtnD = Pin(2, Pin.IN, Pin.PULL_UP)
+            self.PinBtnA = Pin(0, Pin.IN, Pin.PULL_UP)
+            self.PinBtnB = Pin(16, Pin.IN) #GPIO 16 always pull down cannot pull up
 
     def getPaddle (self) :
-      self.pinPaddle.on()
-      self.pinBtn.off()
-      sleep_ms(1)
+      if self.useSPI :
+          self.pinPaddle.on()
+          self.pinBtn.off()
+          sleep_ms(1)
       return self.adc.read()
 
-    def pressed (self,btn, waitRelease=False) :
-      if waitRelease and self.Btns :
-        self.pinPaddle.off()
-        self.pinBtn.on()
-        while self.adc.read() > 70 :
-           sleep_ms (20)
+    def pressed (self,btn) :
       return (self.Btns & btn)
 
+    def justPressed (self,btn) :
+      return (self.Btns & btn) and not (self.lastBtns & btn)
+
+    def justReleased (self,btn) :
+      return (self.lastBtns & btn) and not (self.Btns & btn)
 
     def getBtn(self) :
-      self.pinPaddle.off()
-      self.pinBtn.on()
+      self.lastBtns = self.Btns
       self.Btns = 0
-      a0=self.adc.read()
-      if a0  < 569 :
-        if a0 < 361 :
-          if a0 > 188 :
-            if a0 > 277 :
-              self.Btns |= self.btnU | self.btnA
+      if self.useSPI :
+          # SPI board, record each key pressed based on the  ADC value
+          self.pinPaddle.off()
+          self.pinBtn.on()
+
+          a0=self.adc.read()
+          if a0  < 570 :
+            if a0 < 362 :
+              if a0 > 176 :
+                if a0 > 277 :
+                  self.Btns |= self.btnU | self.btnA
+                elif a0 > 241 :
+                  self.Btns |= self.btnL
+                else :
+                  self.Btns |= self.btnU | self.btnD
+              elif a0 > 68:
+                self.Btns |= self.btnU
             else :
-              self.Btns |= self.btnL
+              if a0 > 485 :
+                if a0 > 531 :
+                  self.Btns |= self.btnD
+                else :
+                  self.Btns |= self.btnU | self.btnB
+              else:
+                if a0 > 443 :
+                  self.Btns |= self.btnL | self.btnA
+                else :
+                  self.Btns |= self.btnR
           else:
-            if a0 > 68 :
-              self.Btns |= self.btnU
-        else :
-          if a0 > 485 :
-            if a0 > 530 :
-              self.Btns |= self.btnD
-            else :
-              self.Btns |= self.btnU | self.btnB
-          else:
-            if a0 > 442 :
-              self.Btns |= self.btnL | self.btnA
-            else :
-              self.Btns |= self.btnR
-      else:
-          if a0 < 736 :
-            if a0 < 661 :
-              if a0 > 616 :
-                self.Btns |= self.btnD | self.btnA
+              if a0 < 737 :
+                if a0 < 661 :
+                  if a0 > 615 :
+                    self.Btns |= self.btnD | self.btnA
+                  else :
+                    self.Btns |= self.btnR | self.btnA
+                elif a0 > 683 :
+                  self.Btns |= self.btnA
+                else :
+                  self.Btns |= self.btnL | self.btnB
+              elif a0 < 841 :
+                if a0 > 805 :
+                  self.Btns |= self.btnD | self.btnB
+                else :
+                  self.Btns |= self.btnR | self.btnB
+              elif a0 > 870 :
+                self.Btns |= self.btnB
               else :
-                self.Btns |= self.btnR | self.btnA
-            elif a0 > 683 :
-              self.Btns |= self.btnA
-            else :
-              self.Btns |= self.btnL | self.btnB
-          elif a0 < 842 :
-            if a0 > 805 :
-              self.Btns |= self.btnD | self.btnB
-            else :
-              self.Btns |= self.btnR | self.btnB
-          elif a0 > 872 :
-            self.Btns |= self.btnB
-          else :
-            self.Btns |= self.btnA | self.btnB
+                self.Btns |= self.btnA | self.btnB
+
+      else : # I2C board, read buttons directly
+           self.Btns = self.Btns | (not self.PinBtnU.value()) << 1 | (not self.PinBtnL.value()) << 2 | (not self.PinBtnR.value()) << 3 | (not self.PinBtnD.value()) << 4 | (not self.PinBtnA.value()) << 5 | (not self.PinBtnB.value())<< 6
       return self.Btns
+      print (self.Btns)
+
+    def  setVol(self) :
+        if self.pressed(self.btnB):
+            if self.justPressed(self.btnU) :
+                self.vol= min (self.vol+1, self.max_vol)
+                self.playTone('c4', 100)
+                return True
+            elif self.justPressed(self.btnD) :
+                self.vol= max (self.vol-1, 0)
+                self.playTone('d4', 100)
+                return True
+
+        return False
 
     def playTone(self, tone, tone_duration, rest_duration=0):
-        beeper = PWM(self.buzzer, freq=self.tones[tone], duty=self.tone_vol)
+        beeper = PWM(self.PinBuzzer, freq=self.tones[tone], duty=self.duty[self.vol])
         sleep_ms(tone_duration)
         beeper.deinit()
         sleep_ms(rest_duration)
 
     def playSound(self, freq, tone_duration, rest_duration=0):
-        beeper = PWM(self.buzzer, freq, duty=self.tone_vol)
+        beeper = PWM(self.PinBuzzer, freq, duty=self.duty[self.vol])
         sleep_ms(tone_duration)
         beeper.deinit()
         sleep_ms(rest_duration)
@@ -165,9 +266,9 @@ class Game8266():
     def random (self, x, y) :
         return  getrandbits(10) % (y+1) + x
 
-    def display_and_wait(self,frames_per_s) :
+    def display_and_wait(self) :
         self.display.show()
-        timer_dif = int(1000/frames_per_s) - ticks_diff(ticks_ms(), self.timer)
+        timer_dif = int(1000/self.frameRate) - ticks_diff(ticks_ms(), self.timer)
         if timer_dif > 0 :
             sleep_ms(timer_dif)
         self.timer=ticks_ms()
@@ -177,9 +278,28 @@ class Rect (object):
     def __init__(self, x, y, w, h):
         self.x = x
         self.y = y
+        self.w = w
+        self.h = h
+    def move (self, vx, vy) :
+        self.x = self.x + vx
+        self.y = self.y + vy
+
+    def colliderect (self, rect1) :
+      if (self.x + self.w   > rect1.x and
+        self.x < rect1.x + rect1.w  and
+        self.y + self.h > rect1.y and
+        self.y < rect1.y + rect1.h) :
+        return True
+      else:
+        return False
+
+class RectO (object):
+    def __init__(self, x, y, w, h):
+        self.x = x
+        self.y = y
         self.x2 = x + w - 1
         self.y2 = y + h - 1
-    def move_ip (self, vx, vy) :
+    def move (self, vx, vy) :
         self.x = self.x + vx
         self.y = self.y + vy
         self.x2 = self.x2 + vx
