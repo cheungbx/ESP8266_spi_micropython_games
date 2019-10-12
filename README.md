@@ -8,8 +8,9 @@
 # btntests.py - button , paddle and beeper testing tool
 # invaders.py - space invaders 
 # snakes.py - snakes biting apple game
-# pongs.py - 1 and 2 player ping pong games
+# pongs.py - 1 and 2 player ping pong game
 # brekouts.py - brick game
+# tetris.py - the famouse Russia blocks game
 # game8266.py - this is a common module required for all above games that controls the screens, buttons, paddles, and beepers, randominzatio and game refresh rates. pre-compile using mpy-cross to make game8266.mpy. Copy this file to the same directory as the other .mpy files.
 # 
 # note: due to the small CPU memory on the ESP8266, only 23K bytes, the above .py files need to be pre-compiled as byte codes using mpy-cross
