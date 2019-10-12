@@ -24,7 +24,6 @@
 import gc
 import sys
 gc.collect()
-print (gc.mem_free())
 import utime
 from utime import sleep_ms
 import network
@@ -36,42 +35,55 @@ g=Game8266()
 g.frameRate = 30
 
 # size = width, height = 200, 400
-size = width, height = 64, 128
+size = width, height = 30, 60
 # color = {'black': (0, 0, 0), 'white':(255, 255, 255)}
 color ={'black': 0, 'white':1}
-sqrsize = 6
+sqrsize = 3
 occupied_squares = []
-top_of_screen = (0, 0)
+top_of_screen = (2, 2)
 top_x, top_y = top_of_screen[0], top_of_screen[1]
 num_block = 4
 pen_size = 1
-mov_delay, r_delay = 300, 50
-board_centre = 25
+mov_delay, r_delay = 200, 50
+board_centre = int(width/2)+2
 no_move = 0
-events = {276: 'left', 275: 'right', 112: 'pause'}
+score = 0
+life = 0
+shape_blcks = []
+shape_name = ""
+new_shape_blcks = []
+new_shape_name = ""
+occupied_squares = []
 
-
-def draw_board():
-    pass
+def reset_board():
+    global shape_blcks, shape_name, occupied_squares
+    shape_blcks = []
+    shape_name = ""
+    occupied_squares = []
+    g.display.fill(0)
+    g.display.rect(top_x-1, top_y-1, width+2, height+2,1)
 
 def drawScore () :
-  global score, level
-  g.display.text('S:{}'.format (score), 0,0,1)
-  g.display.text('L:{}'.format (level), 50,0,1)
+  global score, life
+  g.display.text('S:{}'.format (score), 40,0,1)
+  g.display.text('L:{}'.format (life),  90,0,1)
 
-def draw_shape(shp_blcks):
+def draw_shape():
     '''this draws list of blocks or a block to the background and blits
     background to screen'''
-    if isinstance(shp_blcks, list):
-        for blck in shp_blcks:
-            g.display.fill_rect(blck.x, blck.y, sqrsize, sqrsize, 1)
-    else:
-        g.display.rect(blck.x, blck.y, sqrsize, sqrsize,1)
 
+    if isinstance(shape_blcks,list):
+        for blck in shape_blcks:
+            g.display.rect(blck[0], blck[1], sqrsize, sqrsize, 1)
+    else:
+        g.display.rect(shape_blcks[0], shape_blcks[1], sqrsize, sqrsize,1)
 
 def row_filled(row_no):
+    global occupied_squares
     '''check if a row is fully occupied by a shape block'''
-    for x_coord in range(0, width, sqrsize):
+
+    for x_coord in range(top_x, width+top_x, sqrsize):
+
         if (x_coord, row_no) in occupied_squares:
             continue
         else:
@@ -84,9 +96,10 @@ def delete_row(row_no):
     moves all square positions which have y-axis coord less than row_no down
     board'''
     global occupied_squares
+    g.display.fill(0)
+    g.display.rect(top_x-1, top_y-1, width+2, height+2,1)
     new_buffer = []
     x_coord, y_coord = 0, 1
-    g.display.fill(1)
     for sqr in occupied_squares:
         if sqr[y_coord] != row_no:
             new_buffer.append(sqr)
@@ -96,11 +109,10 @@ def delete_row(row_no):
             occupied_squares[index] = (occupied_squares[index][x_coord],
                                     occupied_squares[index][y_coord] + sqrsize)
     for sqr in occupied_squares:
-        rect = Rect(sqr[x_coord], sqr[y_coord], sqrsize, sqrsize)
-        draw_shape(rect)
+        g.display.rect(sqr[x_coord], sqr[y_coord], sqrsize, sqrsize, 1)
 
-
-def move(shape_blcks, direction):
+def move(direction):
+    global shape_blcks
     '''input:- list of blocks making up a tetris shape
     output:- list of blocks making up a tetris shape
     function moves the input list of blocks that make up shape and then checks
@@ -111,39 +123,47 @@ def move(shape_blcks, direction):
     directs = {'down':(no_move, sqrsize), 'left':(-sqrsize, no_move),
         'right':(sqrsize, no_move), 'pause': (no_move, no_move)}
     delta_x, delta_y = directs[direction]
+
     for index in range(num_block):
-        shape_blcks[index] = shape_blcks[index].move(delta_x, delta_y)
+        shape_blcks[index] = [shape_blcks[index][0] + delta_x, shape_blcks[index][1]+ delta_y]
 
     if legal(shape_blcks):
         for index in range(num_block):
-            g.display_rect(shape_blcks[index].move(-delta_x, -delta_y), 1)
+            #erase previous positions of block
+            g.display.fill_rect(shape_blcks[index][0]-delta_x, shape_blcks[index][1]-delta_y, sqrsize, sqrsize, 0)
         return True
     else:
+        # undo the move, as it's not legal (being blocked by existing blocks)
         for index in range(num_block):
-            shape_blcks[index] = shape_blcks[index].move(-delta_x, -delta_y)
+            shape_blcks[index] = [shape_blcks[index][0]-delta_x, shape_blcks[index][1]- delta_y]
         return False
 
 
-def legal(shape_blcks):
+def legal(blcks):
     '''input: list of shape blocks
     checks whether a shape is in a legal portion of the board as defined in the
     doc of 'move' function'''
 
     for index in range(num_block):
-        new_x, new_y = (shape_blcks[index].x, shape_blcks[index].y)
-
+        new_x = blcks[index][0]
+        new_y = blcks[index][1]
         if (((new_x, new_y) in occupied_squares or new_y >= height) or
-            (new_x >= width or new_x < top_x)): #probly introduced a bug by removing the check for shape being less that y-axis origin
+            (new_x >= width or new_x < top_x)):
             return False
+
     return True
 
 
-def create_newshape(start_x=0, start_y=0):
+def create_newshape(start_x=board_centre, start_y=2):
     '''A shape is a list of four rectangular blocks.
     Input:- coordinates of board at which shape is to be created
     Output:- a list of the list of the coordinates of constituent blocks of each
     shape relative to a reference block and shape name. Reference block  has
     starting coordinates of start_x and start_y. '''
+    global shape_blcks, shape_name, new_shape_blcks, new_shape_name
+    shape_blcks = new_shape_blcks
+    shape_name = new_shape_name
+
     shape_names = ['S', 'O', 'I', 'L', 'T']
     shapes = {'S':[(start_x + 1*sqrsize, start_y + 2*sqrsize),
         (start_x, start_y), (start_x, start_y + 1*sqrsize),(start_x + 1*sqrsize,
@@ -163,49 +183,51 @@ def create_newshape(start_x=0, start_y=0):
                                                         start_y + 1*sqrsize)]
         }
     a_shape = g.random(0, 4)
-    return shapes[shape_names[a_shape]], shape_names[a_shape]
-    #return shapes['O'], 'O' #for testing
+    new_shape_blcks = shapes[shape_names[a_shape]]
+    new_shape_name = shape_names[a_shape]
 
+    g.display.fill_rect(40, top_y+15, 60, 40,0 )
+    if isinstance(new_shape_blcks, list):
+        for blck in new_shape_blcks:
+            g.display.rect(blck[0]+40, blck[1]+15, sqrsize, sqrsize, 1)
+    else:
+        g.display.rect(new_shape_blcks[0+40], new_shape_blcks[1]+15, sqrsize, sqrsize,1)
 
-def rotate(shape_blcks, shape):
+def rotate():
     '''input:- list of shape blocks
     ouput:- list of shape blocks
     function tries to rotate ie change orientation of blocks in the shape
     and this applied depending on the shape for example if a 'O' shape is passed
     to this function, the same shape is returned because the orientation of such
     shape cannot be changed according to tetris rules'''
-    if shape == 'O':
+    if shape_name == 'O':
         return shape_blcks
     else:
         #global no_move, occupied_squares, background
 
-        shape_coords = [(block[0], block[1]) for
-            block in shape_blcks]
-
         ref_shape_ind = 3 # index of block along which shape is rotated
-        start_x, start_y = (shape_coords[ref_shape_ind].x,
-                            shape_coords[ref_shape_ind].y)
-        new_shape_blcks = [(start_x + start_y-shape_coords[0][1],
-                            start_y - (start_x - shape_coords[0][0])),
-            (start_x + start_y-shape_coords[1][1],
-             start_y - (start_x - shape_coords[1][0])),
-            (start_x + start_y-shape_coords[2][1],
-             start_y - (start_x - shape_coords[2][0])),
-            (shape_coords[3][0], shape_coords[3][1])]
-        if legal(new_shape_blcks):
-            for index in range(num_block): # paint over the previous shape
-                g.display_rect(shape_blcks[index], 1)
-            return [Rect(block[0], block[1], sqrsize, sqrsize) for block in new_shape_blcks]
+        start_x, start_y = (shape_blcks[ref_shape_ind][0],
+                            shape_blcks[ref_shape_ind][1])
+        save_blcks = shape_blcks
+        Rshape_blcks = [(start_x + start_y-shape_blcks[0][1],
+                        start_y - (start_x - shape_blcks[0][0])),
+        (start_x + start_y-shape_blcks[1][1],
+         start_y - (start_x - shape_blcks[1][0])),
+        (start_x + start_y-shape_blcks[2][1],
+         start_y - (start_x - shape_blcks[2][0])),
+        (shape_blcks[3][0], shape_blcks[3][1])]
+
+        if legal(Rshape_blcks):
+            for index in range(num_block): # erase the previous shape
+                g.display.fill_rect(shape_blcks[index][0], shape_blcks[index][1],sqrsize, sqrsize, 0)
+            return Rshape_blcks
         else:
             return shape_blcks
 
 exitGame = False
-
+demo = False
 while not exitGame:
-  gameOver = False
-  demo = False
-  life = 3
-  Score = 0
+
 
   #menu screen
   while True:
@@ -245,51 +267,78 @@ while not exitGame:
         else :
             g.frameRate = g.frameRate + 5 if g.frameRate < 100 else 5
 
-  draw_board()
+
+
+  life = 3
+  Score = 0
+  reset_board()
+  create_newshape()
+  gameOver = False
   # game loop
   while not gameOver:
-    curr_shape = create_newshape(board_centre)
-    l_of_blcks_ind = 0
-    shape_name_ind = 1
+    drawScore()
+    create_newshape()
+    extramoves = 3
+    l_of_blcks_ind = blck_x_axis = 0
+    shape_name_ind = blck_y_axis = 1
 
     move_dir = 'down' #default move direction
     game = 'playing'  #default game state play:- is game paused or playing
 
-    shape_blcks = [Rect(block[0], block[1],
-        sqrsize, sqrsize) for block in curr_shape[l_of_blcks_ind]]
     if legal(shape_blcks):
-        draw_shape(shape_blcks)
+        draw_shape()
     else:
-        break  #game over
+        life -= 1
+        if life <= 0 :
+            gameOver = True
+            break
+        else :
+           g.playTone('g4', 100)
+           g.playTone('e4', 100)
+           g.playTone('c4', 100)
+           g.display.show()
+           sleep_ms(2000)
+           reset_board()
+           continue
+
     while True:
+        mov_delay = 100
+        move_dir  = 'down'
         g.getBtn()
         if game == 'paused':
-            if g.justPressed(g.btnU) :
+            if g.justPressed(g.btnB) :
+                g.playTone('c4', 100)
+                g.playTone('e4', 100)
                 game = 'playing'
         else:
             if g.justPressed(g.btnB) :
+                g.playTone('e4', 100)
+                g.playTone('f4', 100)
+                game = 'paused'
+                move_dir  = 'pause'
+            elif g.pressed(g.btnU) and g.pressed(g.btnD) :
                 gameOver = True
-            elif g.justPressed(g.btnD) :
-                mov_delay = 50
-                continue
-            elif g.justPressed(g.btnA) :
-                shape_blcks = rotate(shape_blcks, curr_shape[shape_name_ind])
-                draw_shape(shape_blcks)
+                break
+            elif g.pressed(g.btnD) :
+                mov_delay = 10
+                move_dir  = 'down'
+            elif g.justPressed(g.btnA | g.btnU) :
+                shape_blcks = rotate()
+                draw_shape()
+                g.display.show()
                 sleep_ms(r_delay)
                 continue
             elif g.pressed(g.btnL | g.btnR):
-                move_dir = 'left' if g.pressed(g.BtnL) else 'right'
+                move_dir = 'left' if g.pressed(g.btnL) else 'right'
                 mov_delay = 50
-                move (shape_blcks, move_dir)
-                draw_shape(shape_blcks)
+                move (move_dir)
+                draw_shape()
+                g.display.show()
                 sleep_ms(mov_delay)
                 continue
-            elif g.justPressed(g.btnU) :
-                if mov_delay != 300:
-                    mov_delay = 300
-                move_dir  = 'down'
-            moved = move(shape_blcks, move_dir)
-            draw_shape(shape_blcks)
+
+            moved = move( move_dir)
+            draw_shape()
             sleep_ms(mov_delay)
 
             '''if block did not move and the direction for movement is down
@@ -297,18 +346,35 @@ while not exitGame:
             shape is generated. if direction for movement is sideways and
             block did not move it should be moved down rather'''
             if not moved and move_dir == 'down':
-  
-              for block in shape_blcks:
-                    occupied_squares.append(block[0],block[1])
-              break
-  
-            else:
-                draw_shape(shape_blcks)
+              extramoves = extramoves - 1
+              if extramoves <= 0 :
+                for block in shape_blcks:
+                    occupied_squares.append((block[0],block[1]))
+                break
+
+
+            draw_shape()
             sleep_ms(mov_delay)
             g.display.show()
 
-            for row_no in range (height - sqrsize, 0, -sqrsize):
+            for row_no in range (height - sqrsize + top_y, 0, -sqrsize):
                 if row_filled(row_no):
                     delete_row(row_no)
+                    score+=10
+                    drawScore()
+                    g.display.show()
+                    g.playTone('c4', 100)
+                    g.playTone('e4', 100)
+                    g.playTone('g4', 100)
+                    g.playTone('e4', 100)
+                    g.playTone('c4', 100)
             g.display.show()
 
+  if gameOver :
+       g.display.fill_rect(20,20, 80, 35,0)
+       g.display.text("Game Over", 30,30,1)
+       g.display.show()
+       g.playTone('c4', 100)
+       g.playTone('e4', 100)
+       g.playTone('g4', 100)
+       sleep_ms(2000)
